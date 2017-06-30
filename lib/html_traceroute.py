@@ -56,21 +56,21 @@ def create_html_traceroute_page(route_stats, source_ip, destination_ip, start_da
                                       historical=html_historical)
 
 
-def create_matrix(matrix, end_date="", rdns=[]):
-    matrix_table = ""
+def create_matrix(matrix, end_date="", rdns=""):
+    matrix_table = []
     table_header_contents = ""
     for source in matrix:
         # Since matrix is nxn we can use source as destination label
         table_header_contents += "<td><div><span>{destination}</span></div></td>".format(destination=source)
-        matrix_table += "<tr><td>{source}</td>".format(source=source)
+        matrix_table.append("<tr><td>{source}</td>".format(source=source))
 
         for destination in matrix:
             trace = matrix[source][destination]
-            matrix_table += '<td id="{status}"><a href=".{fp_html}">{rtt}</a></td>'.format(**trace)
+            matrix_table.append('<td id="{status}"><a href=".{fp_html}">{rtt}</a></td>'.format(**trace))
         #mat.append(['<td id="{status}"><a href=".{fp_html}">{rtt}</a></td>'.format(**matrix[source][destination]) for destination in matrix])
-        matrix_table += "</tr>\n"
+        matrix_table.append("</tr>\n")
 
-    matrix_table = "<tr><td>S/D</td>{header}</tr>\n".format(header=table_header_contents) + matrix_table
+    matrix_table = "<tr><td>S/D</td>{header}</tr>\n".format(header=table_header_contents) + "".join(matrix_table)
 
     html_header = ("<!DOCTYPE html>\n"
                    "<html>\n"
@@ -231,4 +231,4 @@ def create_matrix(matrix, end_date="", rdns=[]):
                    "</body>\n"
                    "</html>")
 
-    return html_header.strip() + html_body.format(matrix=matrix_table, end_date=end_date).strip() + html_footer.strip()
+    return "\n".join([html_header.strip(), html_body.format(matrix=matrix_table, end_date=end_date).strip(), html_footer.strip()])

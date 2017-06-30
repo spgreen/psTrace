@@ -54,15 +54,15 @@ class Traceroute:
                     self.different_route_index.add(test_index)
             except KeyError:
                 self.different_route_index.add(test_index)
-                break
+                continue
             except IndexError:
                 self.different_route_index.add(test_index)
-                break
+                continue
         return rtt
 
     def traceroute_analysis(self, rdns):
         """
-        Performs analysis on the most recent traceroute against previous traceroute test
+        Performs latest_route_analysis on the most recent traceroute against previous traceroute test
         :return: route statistics for the most recent traceroute
         """
         # Retrieves latest route from self.test_results

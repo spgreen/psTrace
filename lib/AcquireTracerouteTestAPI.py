@@ -15,7 +15,7 @@ def retrieve_api_data(json_url, url_encoding='utf-8'):
     return json.loads(ps_json_str)
 
 
-def acquire_traceroute_tests(ps_node_url, test_time_range=604800):
+def acquire_traceroute_tests(ps_node_url, test_time_range=2400):
     base_measurement_url = "/esmond/perfsonar/archive/?event-type=packet-trace&time-range="
     test_time_range = str(test_time_range)
 
