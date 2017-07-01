@@ -4,7 +4,7 @@ from lib.five_number_summary import five_number_summary
 
 
 class Traceroute:
-    hop_ip_list = [] # trace route ip path
+    hop_ip_list = []  # trace route ip path
     previous_hop_list = []
 
     def __init__(self, test_info):
@@ -31,7 +31,7 @@ class Traceroute:
         :return: trace route for traceroute_test
         """
         return [(hop["ip"] if "ip" in hop else "null tag:{}".format(self.destination_ip))
-                for (index, hop) in enumerate(traceroute_test["val"])]
+                for hop in traceroute_test["val"]]
 
     def retrieve_all_rtts_for_hop(self, hop_index, hop_ip):
         """
@@ -45,18 +45,18 @@ class Traceroute:
         """
         rtt = []
         rtt_append = rtt.append
-
+        different_route_add = self.different_route_index.add
         for (test_index, traceroute_test) in enumerate(self.test_results):
             try:
                 if traceroute_test["val"][hop_index]["ip"] == hop_ip:
                     rtt_append(traceroute_test["val"][hop_index]["rtt"])
                 else:
-                    self.different_route_index.add(test_index)
+                    different_route_add(test_index)
             except KeyError:
-                self.different_route_index.add(test_index)
+                different_route_add(test_index)
                 continue
             except IndexError:
-                self.different_route_index.add(test_index)
+                different_route_add(test_index)
                 continue
         return rtt
 
@@ -111,7 +111,7 @@ class Traceroute:
             route = self._generate_hop_lists(self.test_results[i])
             if (i+1 not in sorted_diff_route_index) or (previous_route != route) or (i == 0):
                 time = date_retrieval.get_datetime_from_timestamp(self.test_results[i]["ts"])
-                data = dict(index=i, ts=time, route=route )
+                data = dict(index=i, ts=time, route=route)
                 historical_routes.append(data)
             previous_route = route
         return historical_routes
@@ -124,4 +124,4 @@ class Traceroute:
         print("\nTraceroute to {ip}\n{end_date}\n".format(ip=self.destination_ip, end_date=self.end_date))
         print("Hop:\tIP:\t\t\tRTT: Min: Median: Threshold: Notice:\tDomain:\n")
         for (index, hop) in enumerate(self.route_stats):
-            print("{:4} {ip:24} {rtt:6} {min:6} {median:6} {threshold:6} {status:7} {domain}".format(index + 1,**hop))
+            print("{:4} {ip:24} {rtt:6} {min:6} {median:6} {threshold:6} {status:7} {domain}".format(index + 1, **hop))

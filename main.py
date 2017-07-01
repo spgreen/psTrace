@@ -44,8 +44,7 @@ def latest_route_analysis(test, traceroute_matrix, force_graph, rdns):
                traceroute.destination_ip))
 
         """Update Matrix with timeout"""
-        traceroute_matrix.update(source=traceroute.source_ip,
-                                 destination=traceroute.destination_ip)
+        traceroute_matrix.update(source=traceroute.source_ip, destination=traceroute.destination_ip)
         print(traceroute_matrix.complete_matrix)
         return
 
@@ -80,8 +79,8 @@ def latest_route_analysis(test, traceroute_matrix, force_graph, rdns):
     # Creates force nodes between previous and current hop
     hop_domain_list_starting_at_source = [source_ip] + [hop["domain"] for hop in traceroute.route_stats]
 
-    force_graph += list(map(lambda x, y: create_force_nodes(x, y, destination_ip),
-                            enumerate(traceroute.route_stats), hop_domain_list_starting_at_source))
+    force_graph.extend(list(map(lambda x, y: create_force_nodes(x, y, destination_ip),
+                                enumerate(traceroute.route_stats), hop_domain_list_starting_at_source)))
 
     return force_graph
 
@@ -93,15 +92,19 @@ def main():
     rdns = reverse_dns.load_rdns_table("json/rdns.json")
 
     print("Acquiring traceroute tests...")
-    tests = AcquireTracerouteTestAPI.acquire_traceroute_tests("perfsonar_base_url")
+    tests = AcquireTracerouteTestAPI.acquire_traceroute_tests("perfsonar MA URL", test_time_range=604800)
     print("%d test(s) received!" % len(tests))
 
     print("Creating Matrix....")
     traceroute_matrix = Matrix.Matrix(tests)
     print("Matrix Created")
 
-    for test in tests:
-        force_graph = latest_route_analysis(tests[test], traceroute_matrix, force_graph, rdns)
+    # Odd interaction when saving force graph as object after lambda mapping
+    #test_in_list = [tests[test] for test in tests]
+    #list(map(lambda x: latest_route_analysis(x, traceroute_matrix, force_graph, rdns), test_in_list))
+
+    for test in tests.values():
+        force_graph = latest_route_analysis(test, traceroute_matrix, force_graph, rdns)
 
     web_matrix = html_traceroute.create_matrix(traceroute_matrix.complete_matrix, "end date", rdns)
     with open("./json/force.html", "w") as web_matrix_file:
@@ -112,4 +115,4 @@ def main():
 
 if __name__ == '__main__':
     print(timeit.timeit("main()", setup="from __main__ import main", number=1) / 1)
-    #main()
+    # main()
