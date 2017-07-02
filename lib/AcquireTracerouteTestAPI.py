@@ -5,6 +5,12 @@ import urllib.parse
 
 
 def retrieve_api_data(json_url, url_encoding='utf-8'):
+    """
+    
+    :param json_url: 
+    :param url_encoding: 
+    :return: 
+    """
     ssl_context = ssl.SSLContext(protocol=ssl.PROTOCOL_SSLv23)
     try:
         ps_json_url = urllib.request.urlopen(json_url, timeout=10, context=ssl_context)
@@ -16,6 +22,12 @@ def retrieve_api_data(json_url, url_encoding='utf-8'):
 
 
 def acquire_traceroute_tests(ps_node_url, test_time_range=2400):
+    """
+    
+    :param ps_node_url: 
+    :param test_time_range: 
+    :return: 
+    """
     base_measurement_url = "/esmond/perfsonar/archive/?event-type=packet-trace&time-range="
     test_time_range = str(test_time_range)
 
@@ -34,6 +46,11 @@ def acquire_traceroute_tests(ps_node_url, test_time_range=2400):
 
 
 def retrieve_json_from_url(url):
+    """
+    
+    :param url: 
+    :return: 
+    """
     return retrieve_api_data(url)
 
 

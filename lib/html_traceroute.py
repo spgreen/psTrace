@@ -1,19 +1,21 @@
 
 def create_html_traceroute_page(route_stats, source_ip, destination_ip, start_date, end_date, historical_routes):
     html_traceroute = ""
-    html_historical = ""
+    html_historical = []
 
     if historical_routes:
-        html_historical = "<h2>Historical Routes</h2>"
-        for historical_route in historical_routes:
-            html_historical += "<p>{ts}</p>\n<table border='1'><tr><td>Hop:</td><td>IP:</td></tr>\n".format(ts=historical_route["ts"])
-            for (historical_index, historical_hop) in enumerate(historical_route["route"]):
-                html_historical += "<tr><td>{index}</td><td>{ip}</td></tr>\n".format(index=historical_index+1, ip=historical_hop)
-            html_historical += "</table>\n"
+        html_historical.append("<h2>Historical Routes</h2>")
+        for h_route in historical_routes:
+            html_historical.append("<p>{ts}</p>\n"
+                                   "<table border='1'><tr><td>Hop:</td><td>IP:</td></tr>\n".format(ts=h_route["ts"]))
+            for (index, hop) in enumerate(h_route["route"]):
+                html_historical.append("<tr><td>{index}</td><td>{ip}</td></tr>\n".format(index=index+1, ip=hop))
+            html_historical.append("</table>\n")
+        html_historical = "".join(html_historical)
 
     for (index, hop) in enumerate(route_stats):
         threshold = str(hop["threshold"])
-        if hop["status"] == "warn" :
+        if hop["status"] == "warn":
             html_status = "&#10008; - WARN: Latency > " + threshold
         elif hop["status"] == "okay":
             html_status = "&#10004; - OK"
@@ -59,16 +61,17 @@ def create_html_traceroute_page(route_stats, source_ip, destination_ip, start_da
 def create_matrix(matrix, end_date="", rdns=""):
     matrix_table = []
     table_header_contents = ""
+    matrix_table_append = matrix_table.append
     for source in matrix:
         # Since matrix is nxn we can use source as destination label
         table_header_contents += "<td><div><span>{destination}</span></div></td>".format(destination=source)
-        matrix_table.append("<tr><td>{source}</td>".format(source=source))
+        matrix_table_append("<tr><td>{source}</td>".format(source=source))
 
         for destination in matrix:
             trace = matrix[source][destination]
-            matrix_table.append('<td id="{status}"><a href=".{fp_html}">{rtt}</a></td>'.format(**trace))
+            matrix_table_append('<td id="{status}"><a href=".{fp_html}">{rtt}</a></td>'.format(**trace))
         #mat.append(['<td id="{status}"><a href=".{fp_html}">{rtt}</a></td>'.format(**matrix[source][destination]) for destination in matrix])
-        matrix_table.append("</tr>\n")
+        matrix_table_append("</tr>\n")
 
     matrix_table = "<tr><td>S/D</td>{header}</tr>\n".format(header=table_header_contents) + "".join(matrix_table)
 
