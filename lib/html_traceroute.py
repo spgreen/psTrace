@@ -1,13 +1,13 @@
 
 def create_html_traceroute_page(route_stats, source_ip, destination_ip, start_date, end_date, historical_routes):
     html_traceroute = ""
-    html_historical = []
-
+    html_historical = ""
     if historical_routes:
-        html_historical.append("<h2>Historical Routes</h2>")
+        html_historical = ["<h2>Historical Routes</h2>"]
         for h_route in historical_routes:
             html_historical.append("<p>{ts}</p>\n"
-                                   "<table border='1'><tr><td>Hop:</td><td>IP:</td></tr>\n".format(ts=h_route["ts"]))
+                                   "<table border='1'>\n"
+                                   "<tr><td>Hop:</td><td>IP:</td></tr>\n".format(ts=h_route["ts"]))
             for (index, hop) in enumerate(h_route["route"]):
                 html_historical.append("<tr><td>{index}</td><td>{ip}</td></tr>\n".format(index=index+1, ip=hop))
             html_historical.append("</table>\n")
@@ -58,14 +58,14 @@ def create_html_traceroute_page(route_stats, source_ip, destination_ip, start_da
                                       historical=html_historical)
 
 
-def create_matrix(matrix, end_date="", rdns=""):
+def create_matrix(matrix, end_date, rdns_query):
     matrix_table = []
     table_header_contents = ""
     matrix_table_append = matrix_table.append
     for source in matrix:
         # Since matrix is nxn we can use source as destination label
-        table_header_contents += "<td><div><span>{destination}</span></div></td>".format(destination=source)
-        matrix_table_append("<tr><td>{source}</td>".format(source=source))
+        table_header_contents += "<td><div><span>{destination}</span></div></td>".format(destination=rdns_query(source))
+        matrix_table_append("<tr><td>{source}</td>".format(source=rdns_query(source)))
 
         for destination in matrix:
             trace = matrix[source][destination]

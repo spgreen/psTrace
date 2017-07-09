@@ -3,7 +3,6 @@ import socket
 import json
 
 
-
 class ReverseDNS:
     def __init__(self):
         self.rdns = dict()
@@ -19,13 +18,13 @@ class ReverseDNS:
             return self.rdns[ip]
         except ValueError:
             print("%s not a valid IP Address" % ip)
-            return
+            return ip
         except KeyError:
-            self.rdns[ip] = self._query_from_dns(ip)
+            self.rdns[ip] = self.__query_from_dns(ip)
             return self.rdns[ip]
 
     @staticmethod
-    def _query_from_dns(ip):
+    def __query_from_dns(ip):
         """
 
         :param ip:

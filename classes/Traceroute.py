@@ -24,7 +24,7 @@ class Traceroute:
         self.start_date = date_retrieval.get_datetime_from_timestamp(self.test_results[0]["ts"])
         self.end_date = date_retrieval.get_datetime_from_timestamp(self.latest_route["ts"])
 
-    def _generate_hop_lists(self, traceroute_test):
+    def __generate_hop_lists(self, traceroute_test):
         """
         Retrieves the traceroute from traceroute test index from self.test_results[index]
         :param traceroute_test: raw trace route test from self.test_results[index]
@@ -60,13 +60,13 @@ class Traceroute:
                 continue
         return rtt
 
-    def traceroute_analysis(self, rdns):
+    def traceroute_analysis(self):
         """
         Performs latest_route_analysis on the most recent traceroute against previous traceroute test
         :return: route statistics for the most recent traceroute
         """
         # Retrieves latest route from self.test_results
-        hop_ip_list = self._generate_hop_lists(self.latest_route)
+        hop_ip_list = self.__generate_hop_lists(self.latest_route)
 
         for (hop_index, current_hop_ip) in enumerate(hop_ip_list):
             # Goes through every test comparing the IP occurring at the same hop_index of the latest trace route
@@ -88,8 +88,6 @@ class Traceroute:
 
             hop_details["status"] = status
             hop_details["ip"] = current_hop_ip
-            hop_details["domain"] = reverse_dns.query(current_hop_ip, rdns)
-
             self.route_stats.append(hop_details)
         return self.route_stats
 
@@ -108,7 +106,7 @@ class Traceroute:
         # Retrieves all of the different routes that occurred during the data period and stores the routes within the
         # historical_routes list
         for i in sorted_diff_route_index:
-            route = self._generate_hop_lists(self.test_results[i])
+            route = self.__generate_hop_lists(self.test_results[i])
             if (i+1 not in sorted_diff_route_index) or (previous_route != route) or (i == 0):
                 time = date_retrieval.get_datetime_from_timestamp(self.test_results[i]["ts"])
                 data = dict(index=i, ts=time, route=route)
