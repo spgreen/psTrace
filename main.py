@@ -4,7 +4,6 @@ from classes import Matrix
 from classes import ForceGraph
 from classes import ReverseDNS
 from classes.Traceroute import Traceroute
-from lib import html_traceroute
 from lib import AcquireTracerouteTestAPI
 
 
@@ -52,22 +51,15 @@ def latest_route_analysis(test, traceroute_matrix, force_graph, rdns_query):
             ip_domain_list = list(map(lambda x: rdns_query(x), route["route"]))
             route.update({"route": ip_domain_list})
 
-    traceroute_web_page = html_traceroute.create_html_traceroute_page(route_stats=traceroute.route_stats,
-                                                                      source_ip=source_ip,
-                                                                      destination_ip=destination_ip,
-                                                                      start_date=traceroute.start_date,
-                                                                      end_date=traceroute.end_date,
-                                                                      historical_routes=historical_routes)
+    traceroute_web_page = traceroute.create_traceroute_web_page(historical_routes=historical_routes)
 
     fp_html = "./html/{source}-to-{dest}.html".format(source=source_ip, dest=destination_ip)
     # Replaces the colons(:) for IPv6 addresses to full-stops(.) to prevent file path issues when saving files
     if ":" in fp_html:
         fp_html.replace(":", ".")
 
-    traceroute_matrix.update(source=source_ip,
-                             destination=destination_ip,
-                             rtt=traceroute.route_stats[-1]["rtt"],
-                             fp_html=fp_html)
+    traceroute_rtt = traceroute.route_stats[-1]["rtt"]
+    traceroute_matrix.update(source=source_ip, destination=destination_ip, rtt=traceroute_rtt, fp_html=fp_html)
 
     with open(fp_html, "w") as html_file:
         html_file.write(traceroute_web_page)
@@ -86,8 +78,9 @@ def main():
     rdns = ReverseDNS.ReverseDNS()
     rdns.load_reverse_dns_json_file(rdns_fp)
     rdns_query = rdns.query
+
     print("Acquiring traceroute tests...")
-    tests = AcquireTracerouteTestAPI.acquire_traceroute_tests("perfsonar MA URL", test_time_range=604800)
+    tests = AcquireTracerouteTestAPI.acquire_traceroute_tests("203.30.39.11", test_time_range=604800)
     print("%d test(s) received!" % len(tests))
 
     print("Creating Matrix....")
@@ -97,7 +90,7 @@ def main():
     # Computes the trace route data for all tests found within the perfSONAR MA
     [latest_route_analysis(test, traceroute_matrix, force_graph, rdns_query) for test in tests.values()]
 
-    web_matrix = html_traceroute.create_matrix(traceroute_matrix.complete_matrix, "end date", rdns_query)
+    web_matrix = traceroute_matrix.create_matrix_web_page("end date", rdns_query)
     with open("./json/force.html", "w") as web_matrix_file:
         web_matrix_file.write(web_matrix)
 

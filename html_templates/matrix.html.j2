@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='UTF-8'>
+    <meta http-equiv='refresh' content='1135'>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        table {
+            border-collapse: collapse;
+            font-size: 100%;
+            width: 75%;
+        }
+        td {
+            text-align: center;
+            border: 1px solid #ddd;
+            padding: 3px;
+        }
+        a {
+            font-size: 10pt;
+            font-weight: bold;
+            color: #000064;
+            text-decoration: none;
+        }
+        tr:first-child {
+            height: 140px;
+            white-space: nowrap;
+        }
+        tr:first-child td {
+            border: 0;
+            text-align: center;
+        }
+        tr:first-child>td>div {
+            transform: /* Magic Numbers */
+            translate(25px, 51px)
+            /* 45 is really 360 - 45 */
+            rotate(315deg);
+            width: 30px;
+        }
+        tr:first-child>td>div>span {
+            padding: 5px 5px;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2
+        }
+        #error0 {
+            background-color: lightgreen
+        }
+        #error1 {
+            background-color: yellow
+        }
+        #error2 {
+            background-color: #FF1E1E
+        }
+        .link {
+            fill: none;
+            stroke: #666;
+            stroke-width: 1.5px;
+        }
+        #okay {
+            fill: green;
+        }
+        .link.okay {
+            stroke: green;
+        }
+        #unknown {
+            fill: orange;
+        }
+        .link.unknown {
+            stroke: orange;
+        }
+        #warn {
+            fill: red;
+        }
+        .link.warn {
+            stroke: red;
+        }
+        circle {
+            fill: #ccc;
+            stroke: #333;
+            stroke-width: 1.5px;
+        }
+        text {
+            font: 10px sans-serif;
+            pointer-events: none;
+            text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, -1px 0 0 #fff;
+        }
+    </style>
+    <script src='http://d3js.org/d3.v3.min.js'></script>
+    <script src='traceroute_force_graph.json'></script>
+</head>
+<body>
+    <h2>PerfSONAR Traceroute Matrix</h2>
+    <p><strong>Last updated:</strong> {{ end_date }}</p>
+    <table>
+        {{ matrix }}
+    </table>
+    <script>
+        d3.json('traceroute_force_graph.json', function(link_data) {
+            var links = link_data;
+
+            //sort links by source, then target
+            links.sort(function(a, b) {
+                if (a.source > b.source) {
+                    return 1;
+                } else if (a.source < b.source) {
+                    return -1;
+                } else {
+                    if (a.target > b.target) {
+                        return 1;
+                    }
+                    if (a.target < b.target) {
+                        return -1;
+                    } else {
+                        return 0;
+                    }
+                }
+            });
+            //any links with duplicate source and target get an incremented 'linknum'
+            for (var i = 0; i < links.length; i++) {
+                if (i != 0 &&
+                    links[i].source == links[i - 1].source &&
+                    links[i].target == links[i - 1].target) {
+                    links[i].linknum = links[i - 1].linknum + 1;
+                } else {
+                    links[i].linknum = 1;
+                };
+            };
+            var nodes = {};
+            // Compute the distinct nodes from the links.
+            links.forEach(function(link) {
+                link.source = nodes[link.source] || (nodes[link.source] = {
+                    name: link.source,
+                    size: link.size
+                });
+                link.target = nodes[link.target] || (nodes[link.target] = {
+                    name: link.target,
+                    value: link.value
+                });
+            });
+
+            var width = 1300,
+                height = 1250;
+
+            var force = d3.layout.force()
+                .nodes(d3.values(nodes))
+                .links(links)
+                .size([width, height])
+                .linkDistance(48)
+                .charge(-300)
+                .gravity(0.075)
+                .on('tick', tick)
+                .start();
+
+            var svg = d3.select('body').append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            // Per-type markers, as they don't inherit styles.
+            svg.append('defs').selectAll('marker')
+                .data(['warn', 'okay', 'unknown'])
+                .enter().append('marker')
+                .attr('id', function(d) {
+                    return d;
+                })
+                .attr('viewBox', '0 -5 10 10')
+                .attr('refX', 15)
+                .attr('refY', -1.5)
+                .attr('markerWidth', 6)
+                .attr('markerHeight', 6)
+                .attr('orient', 'auto')
+                .append('path')
+                .attr('d', 'M0,-5L10,0L0,5');
+            var path = svg.append('g').selectAll('path')
+                .data(force.links())
+                .enter().append('path')
+                .attr('class', function(d) {
+                    return 'link ' + d.type;
+                })
+                .attr('marker-end', function(d) {
+                    return 'url(#' + d.type + ')';
+                });
+
+            var circle = svg.append('g').selectAll('circle')
+                .data(force.nodes())
+                .enter().append('circle')
+                .attr('r', 8)
+                .attr('r', function(d) {
+                    if (typeof d.size != 'undefined' || d.size != null) {
+                        return d.size;
+                    } else {
+                        return 8;
+                    }
+                })
+                .style('fill', function(d) {
+                    if (typeof d.size != 'undefined' || d.size != null) {
+                        return '#545454'
+                    } else if (d.value != null) {
+                        return 'white'
+                    }
+                })
+                .call(force.drag);
+
+            var text = svg.append('g').selectAll('text')
+                .data(force.nodes())
+                .enter().append('text')
+                .attr('x', -40)
+                .attr('y', '.31em')
+                .text(function(d) {
+                    return d.name;
+                });
+            // Use elliptical arc path segments to doubly-encode directionality.
+            function tick() {
+                path.attr('d', linkArc);
+                circle.attr('transform', transform);
+                text.attr('transform', transform);
+            }
+
+            function linkArc(d) {
+                var dx = d.target.x - d.source.x,
+                    dy = d.target.y - d.source.y,
+                    //dr = Math.sqrt(dx * dx + dy * dy);
+                    dr = 225 / d.linknum;
+                return 'M' + d.source.x + ',' + d.source.y + 'A' + dr + ',' + dr + ' 0 0,1 ' + d.target.x + ',' + d.target.y;
+            }
+
+            function transform(d) {
+                return 'translate(' + d.x + ',' + d.y + ')';
+            }
+        });
+    </script>
+</body>
+</html>

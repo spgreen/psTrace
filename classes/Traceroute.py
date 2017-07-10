@@ -1,12 +1,9 @@
 from lib import date_retrieval, AcquireTracerouteTestAPI
-from lib import reverse_dns
 from lib.five_number_summary import five_number_summary
+from lib import jinja_renderer
 
 
 class Traceroute:
-    hop_ip_list = []  # trace route ip path
-    previous_hop_list = []
-
     def __init__(self, test_info):
         """
         
@@ -24,14 +21,13 @@ class Traceroute:
         self.start_date = date_retrieval.get_datetime_from_timestamp(self.test_results[0]["ts"])
         self.end_date = date_retrieval.get_datetime_from_timestamp(self.latest_route["ts"])
 
-    def __generate_hop_lists(self, traceroute_test):
+    def __generate_hop_lists(self, route_test):
         """
         Retrieves the traceroute from traceroute test index from self.test_results[index]
-        :param traceroute_test: raw trace route test from self.test_results[index]
+        :param route_test: raw trace route test from self.test_results[index]
         :return: trace route for traceroute_test
         """
-        return [(hop["ip"] if "ip" in hop else "null tag:{}".format(self.destination_ip))
-                for hop in traceroute_test["val"]]
+        return [hop["ip"] if "ip" in hop else "null tag:%s" % self.destination_ip for hop in route_test["val"]]
 
     def retrieve_all_rtts_for_hop(self, hop_index, hop_ip):
         """
@@ -123,3 +119,42 @@ class Traceroute:
         print("Hop:\tIP:\t\t\tRTT: Min: Median: Threshold: Notice:\tDomain:\n")
         for (index, hop) in enumerate(self.route_stats):
             print("{:4} {ip:24} {rtt:6} {min:6} {median:6} {threshold:6} {status:7} {domain}".format(index + 1, **hop))
+
+    @staticmethod
+    def __create_historical_route_html(historical_routes):
+        html_historical = ["<h2>Historical Routes</h2>"]
+        for h_route in historical_routes:
+            html_historical.append("<p>{ts}</p>\n"
+                                   "<table border='1'>\n"
+                                   "<tr><td>Hop:</td><td>IP:</td></tr>\n".format(ts=h_route["ts"]))
+            for (index, hop) in enumerate(h_route["route"]):
+                html_historical.append("<tr><td>{index}</td><td>{ip}</td></tr>\n".format(index=index + 1, ip=hop))
+            html_historical.append("</table>\n")
+        return "".join(html_historical)
+
+    def create_traceroute_web_page(self, historical_routes, jinja_template_fp="html_templates/traceroute.html.j2"):
+        html_route = []
+        html_historical = self.__create_historical_route_html(historical_routes) if historical_routes else ""
+
+        for (index, hop) in enumerate(self.route_stats):
+            threshold = str(hop["threshold"])
+            if hop["status"] == "warn":
+                html_status = "&#10008; - WARN: Latency > " + threshold
+            elif hop["status"] == "okay":
+                html_status = "&#10004; - OK"
+            else:
+                html_status = "&#10008; - UNKNOWN: " + threshold
+
+            html_hop = ("<tr><td>{index}</td>""<td>{domain}</td>""<td>{ip}</td>""<td>{rtt} ms</td>""<td>{min} ms</td>"
+                        "<td>{median} ms</td>""<td>{threshold} ms</td>""<td>{web_status}</td></tr>\n")
+            html_route.append(html_hop.format(index=index + 1, web_status=html_status, **hop))
+
+        html_route = "".join(html_route)
+
+        return jinja_renderer.render_template_output(template_fp= jinja_template_fp,
+                                                     source_ip=self.source_ip,
+                                                     dest_ip=self.destination_ip,
+                                                     start_date=self.start_date,
+                                                     end_date=self.end_date,
+                                                     traceroute=html_route,
+                                                     historical=html_historical)

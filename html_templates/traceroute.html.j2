@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='UTF-8'>
+    <meta http-equiv='refresh' content='1800'>
+    <style>
+    </style>
+</head>
+<body>
+    <h2>Traceroute: {{ source_ip }} to {{ dest_ip }}</h2>
+    <p><strong>Latest Test:</strong>{{ end_date }}</p>
+    <p><strong>Source Node: </strong>{{ source_ip }}<br>
+        <strong>Destination node: </strong>{{ dest_ip }}</p>
+    <p><strong>Median Hop RRT</strong> calculated from
+        <strong>{{ start_date }} &#8594; {{ end_date }}</strong></p>
+    <table border='1'>
+        <tr>
+            <td>Hop:</td>
+            <td>Domain:</td>
+            <td>IP:</td>
+            <td>RTT:</td>
+            <td>Min. RTT:</td>
+            <td>Median RTT:</td>
+            <td>Threshold (Upper Fence RTT):</td>
+            <td>Notification:</td>
+        </tr>
+        {{ traceroute }}
+    </table>
+    {{ historical }}
+    <br>
+    <hr>
+    <p style='color:grey; font-size:7pt;'>This page will refresh every 30 minutes</p>
+</body>
+</html>

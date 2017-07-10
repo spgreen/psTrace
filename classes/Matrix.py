@@ -1,5 +1,6 @@
 import collections
 import json
+from lib import jinja_renderer
 
 
 
@@ -67,6 +68,24 @@ class Matrix:
         """Sorts an ordinary dictionary into a sorted ordered dictionary using the OrderedDict module 
             from the collections library"""
         return collections.OrderedDict(sorted(unsorted_dictionary.items(), key=lambda i: i[0]))
+
+    def create_matrix_web_page(self, end_date, rdns_query, jinja_template_fp="html_templates/matrix.html.j2"):
+        matrix_table = []
+        table_header_contents = ""
+        matrix_table_append = matrix_table.append
+        for source in self.complete_matrix:
+            # Since matrix is nxn we can use source as destination label
+            table_header_contents += "<td><div><span>{destination}</span></div></td>".format(
+                destination=rdns_query(source))
+            matrix_table_append("<tr><td>{source}</td>".format(source=rdns_query(source)))
+
+            for destination in self.complete_matrix:
+                trace = self.complete_matrix[source][destination]
+                matrix_table_append('<td id="{status}"><a href=".{fp_html}">{rtt}</a></td>'.format(**trace))
+            matrix_table_append("</tr>\n")
+
+        matrix_table = "<tr><td>S/D</td>{header}</tr>\n".format(header=table_header_contents) + "".join(matrix_table)
+        return jinja_renderer.render_template_output(jinja_template_fp, matrix=matrix_table, end_date=end_date)
 
 #arr={'ps1.daej.kreonet2.net': {'url': 'http://perfsonar-gs.singaren.net.sg/esmond/perfsonar/archive/22c43734dc414305ba2dcbf1c78c9f9f/', 'source': '203.30.39.11', 'destination': '210.119.23.2'}, 'perfsonar-sg.noc.tein3.net': {'url': 'http://perfsonar-gs.singaren.net.sg/esmond/perfsonar/archive/7bbb1442654b4f71aa55c37d99748a6e/', 'source': '203.30.39.11', 'destination': '202.179.252.18'}, 'nms1.jp.apan.net': {'url': 'http://perfsonar-gs.singaren.net.sg/esmond/perfsonar/archive/c6c47129a7d84831b0b71b0c23f07200/', 'source': '203.30.39.11', 'destination': '203.181.248.70'}, 'ps-bandwidth.atlas.unimelb.edu.au': {'url': 'http://perfsonar-gs.singaren.net.sg/esmond/perfsonar/archive/35194d4e83e34e5a915a97b4815a9229/', 'source': '203.30.39.11', 'destination': '192.231.127.40'}, 'perfsonar-m1.twaren.net': {'url': 'http://perfsonar-gs.singaren.net.sg/esmond/perfsonar/archive/f4eb7e0c14ac483786b032a703913862/', 'source': '203.30.39.11', 'destination': '211.79.61.148'}, 'perfsonar.cen.ct.gov': {'url': 'http://perfsonar-gs.singaren.net.sg/esmond/perfsonar/archive/628cbf8454ed4e5bb8623b0cef7884a1/', 'source': '203.30.39.11', 'destination': '64.251.58.166'}, 'perfmum.nkn.in': {'url': 'http://perfsonar-gs.singaren.net.sg/esmond/perfsonar/archive/ae6d896dfa9f4bb187ba4b9215e683ff/', 'source': '203.30.39.11', 'destination': '14.139.5.218'}, 'perfSONAR.myren.net.my': {'url': 'http://perfsonar-gs.singaren.net.sg/esmond/perfsonar/archive/7827a3656b554e7c8afa9c2d83d059e9/', 'source': '203.30.39.11', 'destination': '203.80.20.66'}, 'nsw-brwy-ps1.aarnet.net.au': {'url': 'http://perfsonar-gs.singaren.net.sg/esmond/perfsonar/archive/e6d8c63226094372ba2f92068e49a20e/', 'source': '203.30.39.11', 'destination': '138.44.6.146'}, 'ps1.itsc.cuhk.edu.hk': {'url': 'http://perfsonar-gs.singaren.net.sg/esmond/perfsonar/archive/50efdb47f5fb4543878d40f110b2c85e/', 'source': '203.30.39.11', 'destination': '137.189.192.25'}, 'wa-knsg-ps1.aarnet.net.au': {'url': 'http://perfsonar-gs.singaren.net.sg/esmond/perfsonar/archive/d7929a141dd143138900f084c9877d25/', 'source': '203.30.39.11', 'destination': '138.44.176.90'}, 'psmp-gn-owd-01-lon2-uk-v4.geant.net': {'url': 'http://perfsonar-gs.singaren.net.sg/esmond/perfsonar/archive/00388ad2bc7f46ffbaab6a3190e33a86/', 'source': '203.30.39.11', 'destination': '62.40.104.197'}, 'test.seat.transpac.org': {'url': 'http://perfsonar-gs.singaren.net.sg/esmond/perfsonar/archive/c6bb96834c1d4142b12a9bd4180d7810/', 'source': '203.30.39.11', 'destination': '192.203.115.2'}, 'perfsonar.pregi.net': {'url': 'http://perfsonar-gs.singaren.net.sg/esmond/perfsonar/archive/3578debec4aa4840a9f7021f05cc517d/', 'source': '203.30.39.11', 'destination': '202.90.129.130'}, 'perfsonar-hk.noc.tein3.net': {'url': 'http://perfsonar-gs.singaren.net.sg/esmond/perfsonar/archive/fb8d004ea5ff4f6580d56ff92494b4d9/', 'source': '203.30.39.11', 'destination': '202.179.246.18'}, 'psmp-gn-bw-01-lon-uk.geant.net': {'url': 'http://perfsonar-gs.singaren.net.sg/esmond/perfsonar/archive/5f048d9a352d4719b52890aa90a5d62e/', 'source': '203.30.39.11', 'destination': '62.40.106.131'}, 'perfsonar.uni.net.th': {'url': 'http://perfsonar-gs.singaren.net.sg/esmond/perfsonar/archive/0c14e7cf8b8c4fa5883b22c6b11db50a/', 'source': '203.30.39.11', 'destination': '202.28.194.4'}, 'ls.ntl.nectec.or.th': {'url': 'http://perfsonar-gs.singaren.net.sg/esmond/perfsonar/archive/bb89398d17b44565a275bfad8f6437dd/', 'source': '203.30.39.11', 'destination': '203.185.93.2'}}
 
