@@ -7,7 +7,7 @@ from email.utils import COMMASPACE, formatdate
 def send_mail(to, fro, subject, message, server="localhost"):
     """
     
-    :param to: 
+    :param to: email address of recipient
     :param fro: 
     :param subject: 
     :param message: 
