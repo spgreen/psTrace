@@ -38,14 +38,16 @@ class RouteComparison:
         """
         current_route_length = len(current_route_list)
         previous_route_length = len(previous_route_list)
+        length_difference = abs(current_route_length - previous_route_length)
         max_length = previous_route_length
+
         if current_route_length > previous_route_length:
             max_length = current_route_length
-            previous_route_list += ["*" for i in range(max_length - previous_route_length)]
+            previous_route_list += ["*"] * length_difference
         elif current_route_length < previous_route_length:
-            current_route_list += ["*" for i in range(max_length-current_route_length)]
+            current_route_list += ["*"] * length_difference
 
-        email_contents = ["<table>\n<th><td>Hop:</td><td>Previous Route:</td><td>Current Route:</td></th>"]
+        email_contents = ["<table>\n<tr><th>Hop:</th><th>Previous Route:</th><th>Current Route:</th></tr>"]
         for i in range(max_length):
             index, p_hop, c_hop = (i + 1, previous_route_list[i], current_route_list[i])
             email_contents.append("<tr><td>%d</td><td>%s</td><td>%s</td></tr>" % (index, p_hop, c_hop))
