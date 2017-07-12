@@ -1,4 +1,4 @@
-from lib import date_retrieval, AcquireTracerouteTestAPI
+from lib import date_retrieval, acquire_traceroute_test_from_api
 from lib.five_number_summary import five_number_summary
 from lib import jinja_renderer
 
@@ -10,14 +10,15 @@ class Traceroute:
         :param test_info: traceroute information gathered from the main perfSONAR query
         """
         self.route_stats = []
+        self.different_route_index = set()
+        self.source_domain = ""
+        self.destination_domain = ""
+
         self.api_key = test_info['api']
         self.source_ip = test_info['source']
         self.destination_ip = test_info['destination']
-        self.different_route_index = set()
-
-        self.test_results = AcquireTracerouteTestAPI.retrieve_json_from_url(self.api_key)
-        max_tests = len(self.test_results)
-        self.latest_route = self.test_results[max_tests - 1]
+        self.test_results = acquire_traceroute_test_from_api.retrieve_json_from_url(self.api_key)
+        self.latest_route = self.test_results[len(self.test_results) - 1]
         self.start_date = date_retrieval.get_datetime_from_timestamp(self.test_results[0]["ts"])
         self.end_date = date_retrieval.get_datetime_from_timestamp(self.latest_route["ts"])
 
@@ -27,7 +28,7 @@ class Traceroute:
         :param route_test: raw trace route test from self.test_results[index]
         :return: trace route for traceroute_test
         """
-        return [hop["ip"] if "ip" in hop else "null tag:%s" % self.destination_ip for hop in route_test["val"]]
+        return [hop["ip"] if "ip" in hop else "null tag:%s" % self.destination_domain for hop in route_test["val"]]
 
     def retrieve_all_rtts_for_hop(self, hop_index, hop_ip):
         """
@@ -145,8 +146,8 @@ class Traceroute:
             else:
                 html_status = "&#10008; - UNKNOWN: " + threshold
 
-            html_hop = ("<tr><td>{index}</td>""<td>{domain}</td>""<td>{ip}</td>""<td>{rtt} ms</td>""<td>{min} ms</td>"
-                        "<td>{median} ms</td>""<td>{threshold} ms</td>""<td>{web_status}</td></tr>\n")
+            html_hop = ("<tr><td>{index}</td><td>{domain}</td><td>{ip}</td><td>{rtt} ms</td><td>{min} ms</td>"
+                        "<td>{median} ms</td><td>{threshold} ms</td><td>{web_status}</td></tr>\n")
             html_route.append(html_hop.format(index=index + 1, web_status=html_status, **hop))
 
         html_route = "".join(html_route)

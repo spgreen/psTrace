@@ -4,18 +4,18 @@ import urllib.request
 import urllib.parse
 
 
-def retrieve_api_data(json_url, url_encoding='utf-8'):
+def retrieve_json_from_url(json_url, url_encoding='utf-8'):
     """
     
     :param json_url: 
     :param url_encoding: 
     :return: 
     """
-    ssl_context = ssl.SSLContext(protocol=ssl.PROTOCOL_SSLv23)
+    ssl_context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLSv1)
     try:
         ps_json_url = urllib.request.urlopen(json_url, timeout=10, context=ssl_context)
     except urllib.error.URLError:
-        print("Retrieval failed. Terminating")
+        print("Retrieval failed")
         return
     ps_json_str = ps_json_url.read().decode(url_encoding)
     return json.loads(ps_json_str)
@@ -43,14 +43,4 @@ def acquire_traceroute_tests(ps_node_url, test_time_range=2400):
             data_dict[input_destination]['destination'] = singular_test['destination']
 
     return data_dict
-
-
-def retrieve_json_from_url(url):
-    """
-    
-    :param url: 
-    :return: 
-    """
-    return retrieve_api_data(url)
-
 

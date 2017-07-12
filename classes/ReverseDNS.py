@@ -1,11 +1,10 @@
 import ipaddress
 import socket
-import json
 
 
 class ReverseDNS:
     def __init__(self):
-        self.rdns = dict()
+        self.rdns_store = dict()
 
     def query(self, ip):
         """
@@ -15,13 +14,13 @@ class ReverseDNS:
         """
         try:
             ipaddress.ip_address(ip)
-            return self.rdns[ip]
+            return self.rdns_store[ip]
         except ValueError:
             print("%s not a valid IP Address" % ip)
             return ip
         except KeyError:
-            self.rdns[ip] = self.__query_from_dns(ip)
-            return self.rdns[ip]
+            self.rdns_store[ip] = self.__query_from_dns(ip)
+            return self.rdns_store[ip]
 
     @staticmethod
     def __query_from_dns(ip):
@@ -35,29 +34,5 @@ class ReverseDNS:
         except socket.gaierror:
             return ip
         except socket.herror:
-            print("Unknown Host")
+            print("Unknown Host: %s" % ip)
             return ip
-
-    def load_reverse_dns_json_file(self, fp):
-        """
-
-        :param fp:
-        :return:
-        """
-        try:
-            with open(fp, "r") as rdns_file:
-                self.rdns.update(json.load(fp=rdns_file))
-        except FileNotFoundError:
-            print("File %s not found!" % fp)
-
-    def save_reverse_dns_json_file(self, fp):
-        """
-
-        :param fp:
-        :return:
-        """
-        try:
-            with open(fp, "w") as rdns_fp:
-                json.dump(obj=self.rdns, fp=rdns_fp)
-        except FileNotFoundError:
-            print("Directory %s does not exist" % fp)
