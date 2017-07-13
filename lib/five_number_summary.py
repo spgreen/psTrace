@@ -15,7 +15,7 @@ def five_number_summary(number_list):
         number_list = sorted(number_list)
     except:
         print("Error: Invalid list elements found")
-        return {"min": "*", "lower_quartile": "*", "median": "*", "upper_quartile": "*", "max": "*", "threshold": "*"}
+        return {"min": "", "lower_quartile": "", "median": "", "upper_quartile": "", "max": "", "threshold": ""}
     # Splits odd or even sized lists into their respective upper and lower sections
     # Odd sized list
     if number_list_size % 2:
@@ -28,7 +28,6 @@ def five_number_summary(number_list):
         lower_quartile = statistics.median(number_list[:lower_index])
         upper_quartile = statistics.median(number_list[upper_index:])
         threshold = upper_quartile + 1.5 * (upper_quartile - lower_quartile)
-
         return {"min": number_list[0],
                 "lower_quartile": lower_quartile,
                 "median": statistics.median(number_list),
@@ -36,7 +35,7 @@ def five_number_summary(number_list):
                 "max": number_list[-1],
                 "threshold": threshold}
     except TypeError:
-        print("Error: Not int values")
+        print("Error: Not int or float variables")
     except statistics.StatisticsError:
         print("Error: Not enough elements within list")
-    return {"min": "*", "lower_quartile": "*", "median": "*", "upper_quartile": "*", "max": "*", "threshold": "*"}
+    return {"min": "", "lower_quartile": "", "median": "", "upper_quartile": "", "max": "", "threshold": ""}

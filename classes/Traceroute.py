@@ -46,7 +46,7 @@ class Traceroute:
         for (test_index, traceroute_test) in enumerate(self.test_results):
             try:
                 if traceroute_test["val"][hop_index]["ip"] == hop_ip:
-                    rtt_append(traceroute_test["val"][hop_index]["rtt"])
+                    rtt_append(float(traceroute_test["val"][hop_index]["rtt"]))
                 else:
                     different_route_add(test_index)
             except KeyError:
@@ -72,11 +72,10 @@ class Traceroute:
                 rtt = self.retrieve_all_rtts_for_hop(hop_index=hop_index,  hop_ip=current_hop_ip)
 
             hop_details = five_number_summary(rtt)
-            # Retrieves round trip time for the current hop. If round trip time does not exist,
-            # an asterisk will be used in place
-            hop_details["rtt"] = self.latest_route["val"][hop_index]["rtt"] if "rtt" in self.latest_route["val"][hop_index] else "*"
+            # Save last value of the rtt as it is from the latest trace route; save empty value if rtt does not exist
+            hop_details["rtt"] = rtt[-1] if rtt else ""
 
-            if len(rtt) > 1 and "null" not in rtt:
+            if len(rtt) > 1 and rtt:
                 # rounds all hop_details to 2 d.p.s
                 hop_details = {key: round(hop_details[key], 2)for key in hop_details}
                 status = "warn" if hop_details["rtt"] > hop_details["threshold"] else "okay"
@@ -146,8 +145,8 @@ class Traceroute:
             else:
                 html_status = "&#10008; - UNKNOWN: " + threshold
 
-            html_hop = ("<tr><td>{index}</td><td>{domain}</td><td>{ip}</td><td>{rtt} ms</td><td>{min} ms</td>"
-                        "<td>{median} ms</td><td>{threshold} ms</td><td>{web_status}</td></tr>\n")
+            html_hop = ("<tr><td>{index}</td><td>{domain}</td><td>{ip}</td><td>{rtt}</td><td>{min}</td>"
+                        "<td>{median}</td><td>{threshold}</td><td>{web_status}</td></tr>\n")
             html_route.append(html_hop.format(index=index + 1, web_status=html_status, **hop))
 
         html_route = "".join(html_route)
