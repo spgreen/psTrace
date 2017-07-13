@@ -97,7 +97,8 @@ def main(perfsonar_ma_url, time_period):
     # Computes the trace route data for all tests found within the perfSONAR MA
     [latest_route_analysis(test, traceroute_matrix, force_graph, rdns_query, route_compare) for test in tests.values()]
 
-    #route_comparison.send_email_alert(email_to=,email_from="pstrace@localhost")
+    if route_comparison.email_html:
+        route_comparison.send_email_alert(email_to=["root@localhost"], email_from="pstrace@localhost")
 
     web_matrix = traceroute_matrix.create_matrix_web_page("end date", rdns_query)
     with open("./json/force.html", "w") as web_matrix_file:
@@ -109,7 +110,6 @@ def main(perfsonar_ma_url, time_period):
                      (route_comparison.previous_routes, previous_routes_fp))
 
     [json_loader_saver.save_dictionary_as_json_file(i[0], i[1]) for i in dicts_to_save]
-
 
 
 if __name__ == '__main__':

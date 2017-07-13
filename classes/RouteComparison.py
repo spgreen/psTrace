@@ -1,3 +1,4 @@
+import copy
 from lib import jinja_renderer
 from lib import email
 
@@ -19,9 +20,11 @@ class RouteComparison:
             if self.previous_routes[source_domain][destination_domain] != current_route_list:
                 print("Route Changed")
                 previous_route = self.previous_routes[source_domain][destination_domain]
+                # Update current route into previous_routes dictionary
+                self.previous_routes[source_domain][destination_domain] = copy.copy(current_route_list)
+                # Creates email body for routes that have changed
                 self.email_html.extend(["<h3>From %s to %s</h3>" % (source_domain, destination_domain)])
                 self.email_html.extend(self.__create_email_template(previous_route, current_route_list))
-                self.previous_routes[source_domain][destination_domain] = current_route_list
         except KeyError:
             try:
                 self.previous_routes[source_domain].update({destination_domain: current_route_list})
