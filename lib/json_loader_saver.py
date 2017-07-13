@@ -27,7 +27,7 @@ def save_dictionary_as_json_file(dictionary_contents, fp):
     """
     try:
         with open(fp, "w") as file:
-            json.dump(obj=dictionary_contents, fp=file)
+            json.dump(obj=dictionary_contents, fp=file, indent=4)
     except FileNotFoundError:
         print("Directory %s does not exist" % fp)
     return

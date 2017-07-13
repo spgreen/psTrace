@@ -3,8 +3,12 @@ import statistics
 
 def five_number_summary(number_list):
     """
-
-    :rtype: dict
+    Finds the minimum, lower quartile (LQ), median, upper quartile (UQ) and maximum elements from a list of numbers. 
+    It also calculates the upper threshold based on the following equation:  threshold = UQ + 1.5 * (UQ - LQ) 
+    Return a dictionary containing the five number summary and threshold with the following key values: 
+        min, lower_quartile, median, upper_quartile, max, threshold
+    :param number_list: 
+    :return: 
     """
     number_list_size = len(number_list)
     try:
@@ -12,7 +16,8 @@ def five_number_summary(number_list):
     except:
         print("Error: Invalid list elements found")
         return {"min": "*", "lower_quartile": "*", "median": "*", "upper_quartile": "*", "max": "*", "threshold": "*"}
-    # odd sized lists
+    # Splits odd or even sized lists into their respective upper and lower sections
+    # Odd sized list
     if number_list_size % 2:
         upper_index = int(number_list_size/2) + 1
         lower_index = upper_index - 1

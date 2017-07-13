@@ -68,7 +68,7 @@ class Traceroute:
         for (hop_index, current_hop_ip) in enumerate(hop_ip_list):
             # Goes through every test comparing the IP occurring at the same hop_index of the latest trace route
             rtt = []
-            if current_hop_ip != "null tag:{}".format(self.destination_ip):
+            if "null tag:" not in current_hop_ip:
                 rtt = self.retrieve_all_rtts_for_hop(hop_index=hop_index,  hop_ip=current_hop_ip)
 
             hop_details = five_number_summary(rtt)

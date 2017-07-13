@@ -7,6 +7,7 @@ from classes.Traceroute import Traceroute
 from lib import acquire_traceroute_test_from_api
 from lib import json_loader_saver
 
+
 def latest_route_analysis(test, traceroute_matrix, force_graph, rdns_query, previous_route_compare):
     """
     
@@ -39,14 +40,14 @@ def latest_route_analysis(test, traceroute_matrix, force_graph, rdns_query, prev
     # Adds IP domain values of each within the traceroute.route_stats dictionary due to object variable referencing
     [hop.update({"domain": hop_domain_list[index]}) for index, hop in enumerate(traceroute.route_stats)]
 
-    previous_route_compare(source_ip, destination_ip, hop_domain_list)
+    previous_route_compare(traceroute.source_domain, traceroute.destination_domain, hop_domain_list)
     traceroute.latest_trace_output()
+
     historical_routes = traceroute.historical_diff_routes()
-    # Adds domain name to historical routes
+
+    # Adds domain name to each route within historical routes
     if historical_routes:
-        for route in historical_routes:
-            ip_domain_list = list(map(lambda x: rdns_query(x), route["route"]))
-            route.update({"route": ip_domain_list})
+        [route.update({"route": list(map(lambda x: rdns_query(x), route["route"]))}) for route in historical_routes]
 
     fp_html = "./html/{source}-to-{dest}.html".format(source=source_ip, dest=destination_ip)
     # Replaces the colons(:) for IPv6 addresses to full-stops(.) to prevent file path issues when saving files
@@ -58,16 +59,17 @@ def latest_route_analysis(test, traceroute_matrix, force_graph, rdns_query, prev
 
     traceroute_rtt = traceroute.route_stats[-1]["rtt"]
     traceroute_matrix.update(source=source_ip, destination=destination_ip, rtt=traceroute_rtt, fp_html=fp_html)
+
     # Creates force nodes between previous and current hop
     list(map(lambda x, y: force_graph.create_force_nodes(x, y, destination_ip),
              enumerate(traceroute.route_stats), hop_domain_list_starting_at_source))
 
 
-def main(perfsonar_ma_url):
+def main(perfsonar_ma_url, time_period):
     rdns_fp = "json/rdns.json"
     previous_routes_fp = "json/previous_routes.json"
-    force_graph_fp = "./json/traceroute_force_graph.json"
-    tests=""
+    force_graph_fp = "json/traceroute_force_graph.json"
+    tests = ""
 
     # Force Graph initialisation
     force_graph = ForceGraph.ForceGraph()
@@ -82,7 +84,7 @@ def main(perfsonar_ma_url):
 
     print("Acquiring traceroute tests... ", end="")
     try:
-        tests = acquire_traceroute_test_from_api.acquire_traceroute_tests(perfsonar_ma_url, test_time_range=604800)
+        tests = acquire_traceroute_test_from_api.acquire_traceroute_tests(perfsonar_ma_url, test_time_range=time_period)
         print("%d test(s) received!" % len(tests))
     except TypeError:
         print("Not a valid PerfSONAR Traceroute MA")
@@ -101,14 +103,16 @@ def main(perfsonar_ma_url):
     with open("./json/force.html", "w") as web_matrix_file:
         web_matrix_file.write(web_matrix)
 
-    # Dictionary + filepath for force_graph, rdns and route_comparison
+    # Dictionary + file path for force_graph, rdns and route_comparison
     dicts_to_save = ((force_graph.retrieve_graph(), force_graph_fp),
                      (rdns.rdns_store, rdns_fp),
                      (route_comparison.previous_routes, previous_routes_fp))
+
     [json_loader_saver.save_dictionary_as_json_file(i[0], i[1]) for i in dicts_to_save]
+
 
 
 if __name__ == '__main__':
     #print(timeit.timeit("main()", setup="from __main__ import main", number=1) / 1)
-    main(sys.argv[1])
+    main(sys.argv[1], sys.argv[2])
 
