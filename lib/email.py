@@ -7,7 +7,7 @@ from email.utils import COMMASPACE, formatdate
 def send_mail(to, fro, subject, message, server="localhost"):
     """
     
-    :param to: 
+    :param to: email address of recipient
     :param fro: 
     :param subject: 
     :param message: 
@@ -22,11 +22,8 @@ def send_mail(to, fro, subject, message, server="localhost"):
     msg['Date'] = formatdate(localtime=True)
     msg['Subject'] = subject
 
-    msg.attach(text.MIMEText(message))
-
+    msg.attach(text.MIMEText(message, 'html'))
     smtp = smtplib.SMTP(server)
     smtp.sendmail(fro, to, msg.as_string())
     smtp.close()
-
-    print("Sent %s to %s" %(subject, to))
 
