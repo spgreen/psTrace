@@ -20,8 +20,10 @@ def latest_route_analysis(test, traceroute_matrix, force_graph, rdns_query, prev
     traceroute = Traceroute(test)
     source_ip = traceroute.source_ip
     destination_ip = traceroute.destination_ip
+
     traceroute.source_domain = rdns_query(source_ip)
     traceroute.destination_domain = rdns_query(destination_ip)
+
     # Place within class error checks
     if not traceroute.test_results:
         print("Timeout receiving data from perfSONAR server\n Traceroute: %s to %s\n" % (source_ip, destination_ip))
