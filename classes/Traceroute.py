@@ -1,6 +1,12 @@
-from lib import date_retrieval, acquire_traceroute_test_from_api
+import time
+
+from lib import acquire_traceroute_test_from_api
 from lib.five_number_summary import five_number_summary
 from lib import jinja_renderer
+
+
+def get_datetime_from_timestamp(timestamp):
+    return time.strftime("%c", time.localtime(timestamp))
 
 
 class Traceroute:
@@ -19,8 +25,8 @@ class Traceroute:
         self.destination_ip = test_info['destination']
         self.test_results = acquire_traceroute_test_from_api.retrieve_json_from_url(self.api_key)
         self.latest_route = self.test_results[len(self.test_results) - 1]
-        self.start_date = date_retrieval.get_datetime_from_timestamp(self.test_results[0]["ts"])
-        self.end_date = date_retrieval.get_datetime_from_timestamp(self.latest_route["ts"])
+        self.start_date = get_datetime_from_timestamp(self.test_results[0]["ts"])
+        self.end_date = get_datetime_from_timestamp(self.latest_route["ts"])
 
     def __generate_hop_lists(self, route_test):
         """
@@ -104,7 +110,7 @@ class Traceroute:
         for i in sorted_diff_route_index:
             route = self.__generate_hop_lists(self.test_results[i])
             if (i+1 not in sorted_diff_route_index) or (previous_route != route) or (i == 0):
-                time = date_retrieval.get_datetime_from_timestamp(self.test_results[i]["ts"])
+                time = get_datetime_from_timestamp(self.test_results[i]["ts"])
                 data = dict(index=i, ts=time, route=route)
                 historical_routes.append(data)
             previous_route = route

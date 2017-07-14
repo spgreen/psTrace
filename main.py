@@ -1,4 +1,6 @@
 import sys
+import datetime
+
 from classes import Matrix
 from classes import ForceGraph
 from classes import ReverseDNS
@@ -100,9 +102,11 @@ def main(perfsonar_ma_url, time_period):
     [latest_route_analysis(test, traceroute_matrix, force_graph, rdns_query, route_compare) for test in tests.values()]
 
     if route_comparison.email_html:
+        print("Notification email sent!")
         route_comparison.send_email_alert(email_to=["root@localhost"], email_from="pstrace@localhost")
 
-    web_matrix = traceroute_matrix.create_matrix_web_page("end date", rdns_query)
+    current_time = datetime.datetime.now().strftime("%c")
+    web_matrix = traceroute_matrix.create_matrix_web_page(current_time, rdns_query)
     with open("./json/force.html", "w") as web_matrix_file:
         web_matrix_file.write(web_matrix)
 
