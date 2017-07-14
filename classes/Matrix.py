@@ -26,8 +26,8 @@ class Matrix:
 
         # Changes set to a list to allow for indexing
         matrix_headers = list(matrix)
-        # Creates the destination information dict for all matrix sources to all destinations - all values set to '*'.
-        matrix_dict = {destination:{"rtt": "*", "status": "*", "fp_html": "*"} for destination in matrix_headers}
+        # Creates the destination information dict for all matrix sources to all destinations
+        matrix_dict = {destination:{"rtt": "", "status": "", "fp_html": ""} for destination in matrix_headers}
 
         json_dumps = json.dumps
         json_loads = json.loads
@@ -53,7 +53,7 @@ class Matrix:
             # Used to include sources not found from the initial query"""
             return
 
-        if self.complete_matrix[source][destination]["rtt"] == "*":
+        if not self.complete_matrix[source][destination]["rtt"]:
             # update matrix with rtt value
             matrix = self.complete_matrix[source][destination]
             matrix["rtt"] = rtt
