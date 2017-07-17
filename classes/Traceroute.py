@@ -86,6 +86,7 @@ class Traceroute:
                 hop_details = {key: round(hop_details[key], 2)for key in hop_details}
                 status = "warn" if hop_details["rtt"] > hop_details["threshold"] else "okay"
             else:
+                hop_details["rtt"] = "unknown"
                 status = "unknown"
 
             hop_details["status"] = status
@@ -110,8 +111,8 @@ class Traceroute:
         for i in sorted_diff_route_index:
             route = self.__generate_hop_lists(self.test_results[i])
             if (i+1 not in sorted_diff_route_index) or (previous_route != route) or (i == 0):
-                time = get_datetime_from_timestamp(self.test_results[i]["ts"])
-                data = dict(index=i, ts=time, route=route)
+                time_from_ts = get_datetime_from_timestamp(self.test_results[i]["ts"])
+                data = dict(index=i, ts=time_from_ts, route=route)
                 historical_routes.append(data)
             previous_route = route
         return historical_routes

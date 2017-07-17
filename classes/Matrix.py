@@ -26,8 +26,8 @@ class Matrix:
 
         # Changes set to a list to allow for indexing
         matrix_headers = list(matrix)
-        # Creates the destination information dict for all matrix sources to all destinations
-        matrix_dict = {destination:{"rtt": "", "status": "", "fp_html": ""} for destination in matrix_headers}
+        # Creates the destination information dict for all matrix sources to all destinations - all values set to '*'.
+        matrix_dict = {destination: {"rtt": "", "status": "", "fp_html": ""} for destination in matrix_headers}
 
         json_dumps = json.dumps
         json_loads = json.loads
@@ -35,7 +35,7 @@ class Matrix:
         complete_matrix = {source: json_loads(json_dumps(matrix_dict)) for source in matrix}
         return self.sort_dict_by_key(complete_matrix)
 
-    def update(self, source="", destination="", rtt="", fp_html="", status=""):
+    def update(self, source, destination, rtt, fp_html, status=""):
         """
         
         :param source: 
@@ -63,7 +63,8 @@ class Matrix:
     def output(self):
         return self.complete_matrix
 
-    def sort_dict_by_key(self, unsorted_dictionary):
+    @staticmethod
+    def sort_dict_by_key(unsorted_dictionary):
         """Sorts an ordinary dictionary into a sorted ordered dictionary using the OrderedDict module 
             from the collections library"""
         return collections.OrderedDict(sorted(unsorted_dictionary.items(), key=lambda i: i[0]))
