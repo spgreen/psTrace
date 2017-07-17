@@ -47,17 +47,14 @@ def latest_route_analysis(test, traceroute_matrix, force_graph, rdns_query, prev
     traceroute.latest_trace_output()
 
     historical_routes = traceroute.historical_diff_routes()
-
     # Adds domain name to each route within historical routes
     if historical_routes:
         [route.update({"route": list(map(lambda x: rdns_query(x), route["route"]))}) for route in historical_routes]
 
     fp_html = "./html/{source}-to-{dest}.html".format(source=source_ip, dest=destination_ip)
-
     # Replaces the colons(:) for IPv6 addresses to full-stops(.) to prevent file path issues when saving files on Win32
     if sys.platform == "win32":
         fp_html = fp_html.replace(":", ".")
-
     with open(fp_html, "w") as html_file:
         html_file.write(traceroute.create_traceroute_web_page(historical_routes=historical_routes))
 

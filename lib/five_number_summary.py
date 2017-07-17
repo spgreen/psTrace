@@ -13,7 +13,7 @@ def five_number_summary(number_list):
     number_list_size = len(number_list)
     try:
         number_list = sorted(number_list)
-    except:
+    except TypeError:
         print("Error: Invalid list elements found")
         return {"min": "", "lower_quartile": "", "median": "", "upper_quartile": "", "max": "", "threshold": ""}
     # Splits odd or even sized lists into their respective upper and lower sections

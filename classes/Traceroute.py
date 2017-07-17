@@ -34,7 +34,8 @@ class Traceroute:
         :param route_test: raw trace route test from self.test_results[index]
         :return: trace route for traceroute_test
         """
-        return [hop["ip"] if "ip" in hop else "null tag:%s" % self.destination_domain for hop in route_test["val"]]
+        return [hop["ip"] if "ip" in hop else "null tag:%s:%d" % (self.destination_domain, index)
+                for (index, hop) in enumerate(route_test["val"])]
 
     def retrieve_all_rtts_for_hop(self, hop_index, hop_ip):
         """
@@ -55,10 +56,7 @@ class Traceroute:
                     rtt_append(float(traceroute_test["val"][hop_index]["rtt"]))
                 else:
                     different_route_add(test_index)
-            except KeyError:
-                different_route_add(test_index)
-                continue
-            except IndexError:
+            except (KeyError, IndexError):
                 different_route_add(test_index)
                 continue
         return rtt
@@ -143,18 +141,18 @@ class Traceroute:
         html_route = []
         html_historical = self.__create_historical_route_html(historical_routes) if historical_routes else ""
 
-        for (index, hop) in enumerate(self.route_stats):
-            threshold = str(hop["threshold"])
-            if hop["status"] == "warn":
+        for (index, hop_stats) in enumerate(self.route_stats):
+            threshold = str(hop_stats["threshold"])
+            if hop_stats["status"] == "warn":
                 html_status = "&#10008; - WARN: Latency > " + threshold
-            elif hop["status"] == "okay":
+            elif hop_stats["status"] == "okay":
                 html_status = "&#10004; - OK"
             else:
                 html_status = "&#10008; - UNKNOWN: " + threshold
 
             html_hop = ("<tr><td>{index}</td><td>{domain}</td><td>{ip}</td><td>{rtt}</td><td>{min}</td>"
                         "<td>{median}</td><td>{threshold}</td><td>{web_status}</td></tr>\n")
-            html_route.append(html_hop.format(index=index + 1, web_status=html_status, **hop))
+            html_route.append(html_hop.format(index=index + 1, web_status=html_status, **hop_stats))
 
         html_route = "".join(html_route)
 
