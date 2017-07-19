@@ -9,6 +9,14 @@ from classes.Traceroute import Traceroute
 from lib import acquire_traceroute_test_from_api
 from lib import json_loader_saver
 
+REVERSE_DNS_FP = "json/rdns.json"
+PREVIOUS_ROUTE_FP = "json/previous_routes.json"
+FORCE_GRAPH_DATA_FP = "json/traceroute_force_graph.json"
+DASHBOARD_WEB_PAGE_FP = "json/force.html"
+
+EMAIL_TO = ["root@localhost"]
+EMAIL_FROM = "pstrace@localhost"
+
 
 def latest_route_analysis(test, traceroute_matrix, force_graph, rdns_query, previous_route_compare):
     """
@@ -67,20 +75,16 @@ def latest_route_analysis(test, traceroute_matrix, force_graph, rdns_query, prev
 
 
 def main(perfsonar_ma_url, time_period):
-    rdns_fp = "json/rdns.json"
-    previous_routes_fp = "json/previous_routes.json"
-    force_graph_fp = "json/traceroute_force_graph.json"
-    tests = ""
-
+    tests = ''
     # Force Graph initialisation
     force_graph = ForceGraph.ForceGraph()
 
     rdns = ReverseDNS.ReverseDNS()
-    json_loader_saver.update_dictionary_from_json_file(rdns.rdns_store, rdns_fp)
+    json_loader_saver.update_dictionary_from_json_file(rdns.rdns_store, REVERSE_DNS_FP)
     rdns_query = rdns.query
 
     route_comparison = RouteComparison.RouteComparison()
-    json_loader_saver.update_dictionary_from_json_file(route_comparison.previous_routes, previous_routes_fp)
+    json_loader_saver.update_dictionary_from_json_file(route_comparison.previous_routes, PREVIOUS_ROUTE_FP)
     route_compare = route_comparison.compare_and_update
 
     print("Acquiring traceroute tests... ", end="")
@@ -99,18 +103,18 @@ def main(perfsonar_ma_url, time_period):
     [latest_route_analysis(test, traceroute_matrix, force_graph, rdns_query, route_compare) for test in tests.values()]
 
     if route_comparison.email_html:
-        print("Notification email sent!")
-        route_comparison.send_email_alert(email_to=["root@localhost"], email_from="pstrace@localhost")
+        print("Notification email sent to %s" % EMAIL_TO)
+        route_comparison.send_email_alert(email_to=EMAIL_TO, email_from=EMAIL_FROM)
 
     current_time = datetime.datetime.now().strftime("%c")
     web_matrix = traceroute_matrix.create_matrix_web_page(current_time, rdns_query)
-    with open("./json/force.html", "w") as web_matrix_file:
+    with open(DASHBOARD_WEB_PAGE_FP, "w") as web_matrix_file:
         web_matrix_file.write(web_matrix)
 
     # Dictionary + file path for force_graph, rdns and route_comparison
-    dicts_to_save = ((force_graph.retrieve_graph(), force_graph_fp),
-                     (rdns.rdns_store, rdns_fp),
-                     (route_comparison.previous_routes, previous_routes_fp))
+    dicts_to_save = ((force_graph.retrieve_graph(), FORCE_GRAPH_DATA_FP),
+                     (rdns.rdns_store, REVERSE_DNS_FP),
+                     (route_comparison.previous_routes, PREVIOUS_ROUTE_FP))
 
     [json_loader_saver.save_dictionary_as_json_file(i[0], i[1]) for i in dicts_to_save]
 

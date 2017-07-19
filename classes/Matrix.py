@@ -6,9 +6,9 @@ from lib import jinja_renderer
 
 class Matrix:
     def __init__(self, test_metadata):
-        self.complete_matrix = self._creation(test_metadata)
+        self.complete_matrix = self.__creation(test_metadata)
 
-    def _creation(self, test_metadata, src_node_key='source', dest_node_key='destination'):
+    def __creation(self, test_metadata, src_node_key='source', dest_node_key='destination'):
         """
         
         :param test_metadata: 
@@ -18,19 +18,14 @@ class Matrix:
         """
         matrix = set()
 
-        for singular_test in test_metadata:
-            source_address = test_metadata[singular_test][src_node_key]
-            destination_address = test_metadata[singular_test][dest_node_key]
-            matrix.add(source_address)
-            matrix.add(destination_address)
+        # Update matrix with source and destination addresses for each test
+        for singular_test in test_metadata.values():
+            matrix.update([singular_test[src_node_key], singular_test[dest_node_key]])
 
-        # Changes set to a list to allow for indexing
-        matrix_headers = list(matrix)
         # Creates the destination information dict for all matrix sources to all destinations - all values set to '*'.
-        matrix_dict = {destination: {"rtt": "", "status": "", "fp_html": ""} for destination in matrix_headers}
+        matrix_dict = {destination: {"rtt": "", "status": "", "fp_html": ""} for destination in list(matrix)}
 
-        json_dumps = json.dumps
-        json_loads = json.loads
+        json_dumps, json_loads = json.dumps, json.loads
         # Combines destination dictionary into the source dictionary creating the final matrix
         complete_matrix = {source: json_loads(json_dumps(matrix_dict)) for source in matrix}
         return self.sort_dict_by_key(complete_matrix)
@@ -65,7 +60,7 @@ class Matrix:
 
     @staticmethod
     def sort_dict_by_key(unsorted_dictionary):
-        """Sorts an ordinary dictionary into a sorted ordered dictionary using the OrderedDict module 
+        """Sorts an ordinary dictionary into a sorted ordered dictionary by IP address key using the OrderedDict module 
             from the collections library"""
         return collections.OrderedDict(sorted(unsorted_dictionary.items(), key=lambda i: i[0]))
 
@@ -85,4 +80,5 @@ class Matrix:
             matrix_table_append("</tr>\n")
 
         matrix_table = "<tr><td>S/D</td>{header}</tr>\n".format(header=table_header_contents) + "".join(matrix_table)
+
         return jinja_renderer.render_template_output(jinja_template_fp, matrix=matrix_table, end_date=end_date)
