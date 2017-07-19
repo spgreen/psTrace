@@ -1,7 +1,7 @@
 import time
 
-from lib import acquire_traceroute_test_from_api
-from lib.five_number_summary import five_number_summary
+from lib import json_loader_saver
+from lib import five_number_summary
 from lib import jinja_renderer
 
 
@@ -23,7 +23,7 @@ class Traceroute:
         self.api_key = test_info['api']
         self.source_ip = test_info['source']
         self.destination_ip = test_info['destination']
-        self.test_results = acquire_traceroute_test_from_api.retrieve_json_from_url(self.api_key)
+        self.test_results = json_loader_saver.retrieve_json_from_url(self.api_key)
         self.latest_route = self.test_results[len(self.test_results) - 1]
         self.start_date = get_datetime_from_timestamp(self.test_results[0]["ts"])
         self.end_date = get_datetime_from_timestamp(self.latest_route["ts"])
@@ -75,7 +75,7 @@ class Traceroute:
             if "null tag:" not in current_hop_ip:
                 rtt = self.retrieve_all_rtts_for_hop(hop_index=hop_index,  hop_ip=current_hop_ip)
 
-            hop_details = five_number_summary(rtt)
+            hop_details = five_number_summary.five_number_summary(rtt)
             # Save last value of the rtt as it is from the latest trace route; save empty value if rtt does not exist
             hop_details["rtt"] = rtt[-1] if rtt else ""
 

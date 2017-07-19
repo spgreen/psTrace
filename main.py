@@ -1,21 +1,43 @@
 import sys
 import datetime
+import urllib.parse
 
 from classes import Matrix
 from classes import ForceGraph
 from classes import ReverseDNS
 from classes import RouteComparison
-from classes.Traceroute import Traceroute
-from lib import acquire_traceroute_test_from_api
+from classes import Traceroute
 from lib import json_loader_saver
+
+EMAIL_TO = ["root@localhost"]
+EMAIL_FROM = "pstrace@localhost"
 
 REVERSE_DNS_FP = "json/rdns.json"
 PREVIOUS_ROUTE_FP = "json/previous_routes.json"
 FORCE_GRAPH_DATA_FP = "json/traceroute_force_graph.json"
 DASHBOARD_WEB_PAGE_FP = "json/force.html"
 
-EMAIL_TO = ["root@localhost"]
-EMAIL_FROM = "pstrace@localhost"
+
+def acquire_traceroute_tests(ps_node_url, test_time_range=2400):
+    """
+
+    :param ps_node_url: 
+    :param test_time_range: 
+    :return: 
+    """
+    ps_url = "https://" + ps_node_url + "/esmond/perfsonar/archive/?event-type=packet-trace&time-range=1200"
+    traceroute_tests = json_loader_saver.retrieve_json_from_url(ps_url)
+
+    data_dict = {}
+    for singular_test in traceroute_tests:
+        input_destination = singular_test['input-destination']
+        if input_destination not in data_dict:
+            url = urllib.parse.urlsplit(singular_test['url'], scheme="https")
+            api_key = "https://" + url.netloc + url.path + "packet-trace/base?time-range=" + str(test_time_range)
+            data_dict[input_destination] = {'api': api_key,
+                                            'source': singular_test['source'],
+                                            'destination': singular_test["destination"]}
+    return data_dict
 
 
 def latest_route_analysis(test, traceroute_matrix, force_graph, rdns_query, previous_route_compare):
@@ -27,7 +49,7 @@ def latest_route_analysis(test, traceroute_matrix, force_graph, rdns_query, prev
     :param rdns_query: 
     :return: 
     """
-    traceroute = Traceroute(test)
+    traceroute = Traceroute.Traceroute(test)
     source_ip = traceroute.source_ip
     destination_ip = traceroute.destination_ip
 
@@ -89,7 +111,7 @@ def main(perfsonar_ma_url, time_period):
 
     print("Acquiring traceroute tests... ", end="")
     try:
-        tests = acquire_traceroute_test_from_api.acquire_traceroute_tests(perfsonar_ma_url, test_time_range=time_period)
+        tests = acquire_traceroute_tests(perfsonar_ma_url, test_time_range=time_period)
         print("%d test(s) received!" % len(tests))
     except TypeError:
         print("Not a valid PerfSONAR Traceroute MA")
@@ -120,6 +142,5 @@ def main(perfsonar_ma_url, time_period):
 
 
 if __name__ == '__main__':
-    #print(timeit.timeit("main()", setup="from __main__ import main", number=1) / 1)
     main(sys.argv[1], sys.argv[2])
 
