@@ -1,12 +1,60 @@
+import statistics
 import time
 
 from lib import json_loader_saver
-from lib import five_number_summary
 from lib import jinja_renderer
 
 
-def get_datetime_from_timestamp(timestamp):
-    return time.strftime("%c", time.localtime(timestamp))
+def five_number_summary(number_list):
+    """
+    Finds the minimum, lower quartile (LQ), median, upper quartile (UQ) and maximum elements from a list of numbers. 
+    It also calculates the upper threshold based on the following equation:  threshold = UQ + 1.5 * (UQ - LQ) 
+    Return a dictionary containing the five number summary and threshold with the following key values: 
+        min, lower_quartile, median, upper_quartile, max, threshold
+    :param number_list: 
+    :return: 
+    """
+    number_list_size = len(number_list)
+    try:
+        number_list = sorted(number_list)
+    except TypeError:
+        print("Error: Invalid list elements found")
+        return {"min": "", "lower_quartile": "", "median": "", "upper_quartile": "", "max": "", "threshold": ""}
+    # Splits odd or even sized lists into their respective upper and lower sections
+    # Odd sized list
+    if number_list_size % 2:
+        upper_index = int(number_list_size/2) + 1
+        lower_index = upper_index - 1
+    else:
+        upper_index = int(number_list_size/2)
+        lower_index = upper_index
+    try:
+        lower_quartile = statistics.median(number_list[:lower_index])
+        upper_quartile = statistics.median(number_list[upper_index:])
+        threshold = upper_quartile + 1.5 * (upper_quartile - lower_quartile)
+        return {"min": number_list[0],
+                "lower_quartile": lower_quartile,
+                "median": statistics.median(number_list),
+                "upper_quartile": upper_quartile,
+                "max": number_list[-1],
+                "threshold": threshold}
+    except TypeError:
+        print("Error: Not int or float variables")
+    except statistics.StatisticsError:
+        print("Error: Not enough elements within list")
+    return {"min": "", "lower_quartile": "", "median": "", "upper_quartile": "", "max": "", "threshold": ""}
+
+
+def get_datetime_from_timestamp(*timestamps):
+    """
+    
+    :param timestamps: 
+    :return: 
+    """
+    ts_store = [time.strftime("%c", time.localtime(int(ts))) for ts in timestamps]
+    if len(ts_store) == 1:
+        return ts_store[0]
+    return ts_store
 
 
 class Traceroute:
@@ -19,19 +67,19 @@ class Traceroute:
         self.different_route_index = set()
         self.source_domain = ""
         self.destination_domain = ""
+        self.hop_ip_list = ""
 
-        self.api_key = test_info['api']
         self.source_ip = test_info['source']
         self.destination_ip = test_info['destination']
-        self.test_results = json_loader_saver.retrieve_json_from_url(self.api_key)
-        self.latest_route = self.test_results[len(self.test_results) - 1]
-        self.start_date = get_datetime_from_timestamp(self.test_results[0]["ts"])
-        self.end_date = get_datetime_from_timestamp(self.latest_route["ts"])
+        self.trace_route_results = json_loader_saver.retrieve_json_from_url(test_info['api'])
+        self.latest_trace_route = self.trace_route_results[len(self.trace_route_results) - 1]
+        self.start_date, self.end_date = get_datetime_from_timestamp(self.trace_route_results[0]["ts"],
+                                                                     self.latest_trace_route["ts"])
 
     def __generate_hop_lists(self, route_test):
         """
-        Retrieves the traceroute from traceroute test index from self.test_results[index]
-        :param route_test: raw trace route test from self.test_results[index]
+        Retrieves the traceroute from traceroute test index from self.trace_route_results[index]
+        :param route_test: raw trace route test from self.trace_route_results[index]
         :return: trace route for traceroute_test
         """
         return [hop["ip"] if "ip" in hop else "null tag:%s:%d" % (self.destination_domain, index)
@@ -50,7 +98,7 @@ class Traceroute:
         rtt = []
         rtt_append = rtt.append
         different_route_add = self.different_route_index.add
-        for (test_index, traceroute_test) in enumerate(self.test_results):
+        for (test_index, traceroute_test) in enumerate(self.trace_route_results):
             try:
                 if traceroute_test["val"][hop_index]["ip"] == hop_ip:
                     rtt_append(float(traceroute_test["val"][hop_index]["rtt"]))
@@ -66,16 +114,16 @@ class Traceroute:
         Performs latest_route_analysis on the most recent traceroute against previous traceroute test
         :return: route statistics for the most recent traceroute
         """
-        # Retrieves latest route from self.test_results
-        hop_ip_list = self.__generate_hop_lists(self.latest_route)
+        # Retrieves latest route from self.trace_route_results
+        self.hop_ip_list = self.__generate_hop_lists(self.latest_trace_route)
 
-        for (hop_index, current_hop_ip) in enumerate(hop_ip_list):
+        for (hop_index, current_hop_ip) in enumerate(self.hop_ip_list):
             # Goes through every test comparing the IP occurring at the same hop_index of the latest trace route
             rtt = []
             if "null tag:" not in current_hop_ip:
                 rtt = self.retrieve_all_rtts_for_hop(hop_index=hop_index,  hop_ip=current_hop_ip)
 
-            hop_details = five_number_summary.five_number_summary(rtt)
+            hop_details = five_number_summary(rtt)
             # Save last value of the rtt as it is from the latest trace route; save empty value if rtt does not exist
             hop_details["rtt"] = rtt[-1] if rtt else ""
 
@@ -107,9 +155,9 @@ class Traceroute:
         # Retrieves all of the different routes that occurred during the data period and stores the routes within the
         # historical_routes list
         for i in sorted_diff_route_index:
-            route = self.__generate_hop_lists(self.test_results[i])
+            route = self.__generate_hop_lists(self.trace_route_results[i])
             if (i+1 not in sorted_diff_route_index) or (previous_route != route) or (i == 0):
-                data = {'index': i, 'ts': get_datetime_from_timestamp(self.test_results[i]["ts"]), 'route': route}
+                data = {'index': i, 'ts': get_datetime_from_timestamp(self.trace_route_results[i]["ts"]), 'route': route}
                 historical_routes.append(data)
             previous_route = route
         return historical_routes
