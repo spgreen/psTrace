@@ -6,21 +6,26 @@ class ReverseDNS:
     def __init__(self):
         self.rdns_store = dict()
 
-    def query(self, ip):
+    def query(self, *ip_addresses):
         """
 
-        :param ip:
+        :param ip_addresses:
         :return:
         """
-        try:
-            ipaddress.ip_address(ip)
-            return self.rdns_store[ip]
-        except ValueError:
-            print("%s not a valid IP Address" % ip)
-            return ip
-        except KeyError:
-            self.rdns_store[ip] = self.__query_from_dns(ip)
-            return self.rdns_store[ip]
+        ip_store = []
+        for ip in ip_addresses:
+            try:
+                ipaddress.ip_address(ip)
+                ip_store.append(self.rdns_store[ip])
+            except ValueError:
+                print("%s not a valid IP Address" % ip)
+                ip_store.append(ip)
+            except KeyError:
+                self.rdns_store[ip] = self.__query_from_dns(ip)
+                ip_store.append(self.rdns_store[ip])
+        if len(ip_store) == 1:
+            return ip_store[0]
+        return ip_store
 
     @staticmethod
     def __query_from_dns(ip):
