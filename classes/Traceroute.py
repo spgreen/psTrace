@@ -82,7 +82,7 @@ class Traceroute:
         :param route_test: raw trace route test from self.trace_route_results[index]
         :return: trace route for traceroute_test
         """
-        return [hop["ip"] if "ip" in hop else "null tag:%s:%d" % (self.destination_domain, index)
+        return [hop["ip"] if "ip" in hop else "null tag:%s:%d" % (self.destination_domain, index + 1)
                 for (index, hop) in enumerate(route_test["val"])]
 
     def retrieve_all_rtts_for_hop(self, hop_index, hop_ip):
