@@ -70,9 +70,9 @@ class Matrix:
         matrix_table_append = matrix_table.append
         for source in self.complete_matrix:
             # Since matrix is nxn we can use source as destination label
-            table_header_contents += "<td><div><span>{destination}</span></div></td>".format(
-                destination=rdns_query(source))
-            matrix_table_append("<tr><td>{source}</td>".format(source=rdns_query(source)))
+            domain_address = rdns_query(source)
+            table_header_contents += "<td><div><span>{dest}</span></div></td>".format(dest=domain_address)
+            matrix_table_append("<tr><td>{source}</td>".format(source=domain_address))
 
             for destination in self.complete_matrix:
                 trace = self.complete_matrix[source][destination]
