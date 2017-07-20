@@ -53,22 +53,21 @@ def latest_route_analysis(test, traceroute_matrix, force_graph, rdns_query, prev
     source_ip = traceroute.source_ip
     destination_ip = traceroute.destination_ip
 
-    traceroute.source_domain = rdns_query(source_ip)
-    traceroute.destination_domain = rdns_query(destination_ip)
+    traceroute.source_domain, traceroute.destination_domain = rdns_query(source_ip, destination_ip)
 
     # Place within class error checks
-    if not traceroute.test_results:
+    if not traceroute.trace_route_results:
         print("Timeout receiving data from perfSONAR server\n Traceroute: %s to %s\n" % (source_ip, destination_ip))
         # Update Matrix with timeout
         traceroute_matrix.update(source=source_ip, destination=destination_ip)
         return
-    elif len(traceroute.test_results) <= 0:
+    elif len(traceroute.trace_route_results) <= 0:
         print("Error: Only 1 test available!")
         return
 
     traceroute.traceroute_analysis()
 
-    hop_domain_list = list(map(lambda x: rdns_query(x), [hop["ip"] for hop in traceroute.route_stats]))
+    hop_domain_list = rdns_query(*traceroute.hop_ip_list)
     hop_domain_list_starting_at_source = [rdns_query(source_ip)] + hop_domain_list[:-1]
     # Adds IP domain values of each within the traceroute.route_stats dictionary due to object variable referencing
     [hop.update({"domain": hop_domain_list[index]}) for index, hop in enumerate(traceroute.route_stats)]
@@ -79,7 +78,7 @@ def latest_route_analysis(test, traceroute_matrix, force_graph, rdns_query, prev
     historical_routes = traceroute.historical_diff_routes()
     # Adds domain name to each route within historical routes
     if historical_routes:
-        [route.update({"route": list(map(lambda x: rdns_query(x), route["route"]))}) for route in historical_routes]
+        [route.update({"route": rdns_query(*route["route"])}) for route in historical_routes]
 
     fp_html = "./html/{source}-to-{dest}.html".format(source=source_ip, dest=destination_ip)
     # Replaces the colons(:) for IPv6 addresses to full-stops(.) to prevent file path issues when saving files on Win32
