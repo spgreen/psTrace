@@ -91,8 +91,7 @@ def latest_route_analysis(test, traceroute_matrix, force_graph, rdns_query, prev
     traceroute_matrix.update(source=source_ip, destination=destination_ip, rtt=traceroute_rtt, fp_html=fp_html)
 
     # Creates force nodes between previous and current hop
-    list(map(lambda x, y: force_graph.create_force_nodes(x, y, destination_ip),
-             enumerate(traceroute.route_stats), hop_domain_list_starting_at_source))
+    force_graph.create_force_nodes(traceroute.route_stats, hop_domain_list_starting_at_source, destination_ip)
 
 
 def main(perfsonar_ma_url, time_period):

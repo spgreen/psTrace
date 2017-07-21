@@ -50,18 +50,14 @@ class Matrix:
 
         if not self.complete_matrix[source][destination]["rtt"]:
             # update matrix with rtt value
-            matrix = self.complete_matrix[source][destination]
-            matrix["rtt"] = rtt
-            matrix["status"] = status
-            matrix["fp_html"] = fp_html
+            self.complete_matrix[source][destination].update({"rtt": rtt, "status": status, "fp_html": fp_html})
 
     def output(self):
         return self.complete_matrix
 
     @staticmethod
     def sort_dict_by_key(unsorted_dictionary):
-        """Sorts an ordinary dictionary into a sorted ordered dictionary by IP address key using the OrderedDict module 
-            from the collections library"""
+        # Sorts an ordinary dictionary into a sorted ordered dictionary by IP address key
         return collections.OrderedDict(sorted(unsorted_dictionary.items(), key=lambda i: i[0]))
 
     def create_matrix_web_page(self, end_date, rdns_query, jinja_template_fp="html_templates/matrix.html.j2"):

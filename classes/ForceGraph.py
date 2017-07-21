@@ -6,18 +6,28 @@ class ForceGraph:
         """
         
         :param hop_details: 
-        :param previous_hop: 
-        :param destination_ip: 
+        :param previous_hop: Singular entry or list. If list it will be the route starting at the source ip
+        :param destination_ip: Singular entry or list. If list it will be route stats starting after the source ip
         :return: 
         """
-        value = "end" if hop_details[1]["ip"] == destination_ip else "null"
-        size = 15 if hop_details[0] == 0 else 7
+        if type(hop_details) is not list:
+            hop_details = [hop_details]
+        if type(previous_hop) is not list:
+            previous_hop = [previous_hop]
 
-        self.force_graph.append({"source": previous_hop,
-                                 "target": hop_details[1]["domain"],
-                                 "type": hop_details[1]["status"],
-                                 "size": size,
-                                 "value": value})
+        if len(hop_details) != len(previous_hop):
+            return
+
+        for i in range(len(hop_details)):
+            value = "end" if hop_details[i]["ip"] == destination_ip else "null"
+            size = 15 if i == 0 else 7
+
+            self.force_graph.append({"source": previous_hop[i],
+                                     "target": hop_details[i]["domain"],
+                                     "type": hop_details[i]["status"],
+                                     "size": size,
+                                     "value": value})
+
 
     def retrieve_graph(self):
         return self.force_graph
