@@ -28,6 +28,5 @@ class ForceGraph:
                                      "size": size,
                                      "value": value})
 
-
     def retrieve_graph(self):
         return self.force_graph

@@ -88,7 +88,7 @@ def latest_route_analysis(test, traceroute_matrix, force_graph, rdns_query, prev
         html_file.write(traceroute.create_traceroute_web_page(historical_routes=historical_routes))
 
     traceroute_rtt = traceroute.route_stats[-1]["rtt"]
-    traceroute_matrix.update(source=source_ip, destination=destination_ip, rtt=traceroute_rtt, fp_html=fp_html)
+    traceroute_matrix.update_matrix(source=source_ip, destination=destination_ip, rtt=traceroute_rtt, fp_html=fp_html)
 
     # Creates force nodes between previous and current hop
     force_graph.create_force_nodes(traceroute.route_stats, hop_domain_list_starting_at_source, destination_ip)

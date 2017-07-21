@@ -30,7 +30,7 @@ class Matrix:
         complete_matrix = {source: json_loads(json_dumps(matrix_dict)) for source in matrix}
         return self.sort_dict_by_key(complete_matrix)
 
-    def update(self, source, destination, rtt, fp_html, status=""):
+    def update_matrix(self, source, destination, rtt, fp_html, status=""):
         """
         
         :param source: 
