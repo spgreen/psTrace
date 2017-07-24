@@ -10,7 +10,7 @@ class Matrix:
 
     def __creation(self, test_metadata, src_node_key='source', dest_node_key='destination'):
         """
-        
+        Creates the base traceroute matrix from PerfSONAR MA data 
         :param test_metadata: 
         :param src_node_key: 
         :param dest_node_key: 
@@ -32,11 +32,11 @@ class Matrix:
 
     def update_matrix(self, source, destination, rtt, fp_html, status=""):
         """
-        
-        :param source: 
-        :param destination: 
-        :param rtt: 
-        :param fp_html: 
+        Updates matrix with trace route round-trip times, html file path and status for the specific test
+        :param source: Source IP address
+        :param destination: Destination IP address
+        :param rtt: Round trip time to the destination IP address 
+        :param fp_html: File path of the HTML file containing a detailed view of the specific test
         :param status: 
         :return: 
         """
@@ -49,7 +49,6 @@ class Matrix:
             return
 
         if not self.complete_matrix[source][destination]["rtt"]:
-            # update matrix with rtt value
             self.complete_matrix[source][destination].update({"rtt": rtt, "status": status, "fp_html": fp_html})
 
     def output(self):
@@ -61,20 +60,31 @@ class Matrix:
         return collections.OrderedDict(sorted(unsorted_dictionary.items(), key=lambda i: i[0]))
 
     def create_matrix_web_page(self, end_date, rdns_query, jinja_template_fp="html_templates/matrix.html.j2"):
-        matrix_table = []
-        table_header_contents = ""
-        matrix_table_append = matrix_table.append
+        """
+        
+        :param end_date: 
+        :param rdns_query: 
+        :param jinja_template_fp: 
+        :return: 
+        """
+        table_contents = []
+        table_header = ["<tr><td>S/D</td>"]
+
+        table_header_append = table_header.append
+        table_contents_append = table_contents.append
+
         for source in self.complete_matrix:
             # Since matrix is nxn we can use source as destination label
             domain_address = rdns_query(source)
-            table_header_contents += "<td><div><span>{dest}</span></div></td>".format(dest=domain_address)
-            matrix_table_append("<tr><td>{source}</td>".format(source=domain_address))
-
+            table_header_append("<td><div><span>{dest}</span></div></td>".format(dest=domain_address))
+            table_contents_append("<tr><td>{source}</td>".format(source=domain_address))
+            # Fills the table with test data
             for destination in self.complete_matrix:
                 trace = self.complete_matrix[source][destination]
-                matrix_table_append('<td id="{status}"><a href=".{fp_html}">{rtt}</a></td>'.format(**trace))
-            matrix_table_append("</tr>\n")
+                table_contents_append('<td id="{status}"><a href=".{fp_html}">{rtt}</a></td>'.format(**trace))
+            table_contents_append("</tr>\n")
+        table_header_append("</tr>\n")
 
-        matrix_table = "<tr><td>S/D</td>{header}</tr>\n".format(header=table_header_contents) + "".join(matrix_table)
+        matrix_table = "".join(table_header + table_contents)
 
         return jinja_renderer.render_template_output(jinja_template_fp, matrix=matrix_table, end_date=end_date)

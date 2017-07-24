@@ -1,6 +1,8 @@
+#!/usr/bin/python3
 import sys
 import datetime
 import urllib.parse
+import argparse
 
 from classes import Matrix
 from classes import ForceGraph
@@ -50,28 +52,31 @@ def latest_route_analysis(test, traceroute_matrix, force_graph, rdns_query, prev
     :return: 
     """
     traceroute = Traceroute.Traceroute(test)
+
     source_ip = traceroute.source_ip
     destination_ip = traceroute.destination_ip
 
-    traceroute.source_domain, traceroute.destination_domain = rdns_query(source_ip, destination_ip)
-
-    # Place within class error checks
+    # Checks if test results exist after trying to retrieve traceroute test data from the perfSONAR MA
     if not traceroute.trace_route_results:
         print("Timeout receiving data from perfSONAR server\n Traceroute: %s to %s\n" % (source_ip, destination_ip))
-        # Update Matrix with timeout
+        # Update Traceroute Matrix with timeout message
         traceroute_matrix.update(source=source_ip, destination=destination_ip)
         return
     elif len(traceroute.trace_route_results) <= 0:
         print("Error: Only 1 test available!")
         return
 
+    traceroute.source_domain, traceroute.destination_domain = rdns_query(source_ip, destination_ip)
+
     traceroute.traceroute_analysis()
 
+    # Retrieves the domain names for all IP address found within the traceroute test
     hop_domain_list = rdns_query(*traceroute.hop_ip_list)
     hop_domain_list_starting_at_source = [rdns_query(source_ip)] + hop_domain_list[:-1]
-    # Adds IP domain values of each within the traceroute.route_stats dictionary due to object variable referencing
+    # Adds domain values of each hop within the traceroute.route_stats dictionary due to object variable referencing
     [hop.update({"domain": hop_domain_list[index]}) for index, hop in enumerate(traceroute.route_stats)]
 
+    # Checks and stores previous routes found within the traceroute test data
     previous_route_compare(traceroute.source_domain, traceroute.destination_domain, hop_domain_list)
     traceroute.latest_trace_output()
 
@@ -123,7 +128,7 @@ def main(perfsonar_ma_url, time_period):
     [latest_route_analysis(test, traceroute_matrix, force_graph, rdns_query, route_compare) for test in tests.values()]
 
     if route_comparison.email_html:
-        print("Notification email sent to %s" % EMAIL_TO)
+        print("Notification email sent to %s" % ", ".join(EMAIL_TO))
         route_comparison.send_email_alert(email_to=EMAIL_TO, email_from=EMAIL_FROM)
 
     current_time = datetime.datetime.now().strftime("%c")
@@ -140,5 +145,10 @@ def main(perfsonar_ma_url, time_period):
 
 
 if __name__ == '__main__':
-    main(sys.argv[1], sys.argv[2])
+    parser = argparse.ArgumentParser()
+    parser.add_argument("perfsonar_base", help="IP or base domain of the PerfSONAR MA")
+    parser.add_argument("time_period", help="Time period (in seconds) from current point in time. e.g. 1 day == 86400",
+                        type=int)
+    args = parser.parse_args()
+    main(args.perfsonar_base, args.time_period)
 
