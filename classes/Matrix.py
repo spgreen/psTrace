@@ -1,5 +1,4 @@
 import collections
-import json
 
 from lib import jinja_renderer
 
@@ -8,27 +7,19 @@ class Matrix:
     def __init__(self, test_metadata):
         self.complete_matrix = self.__creation(test_metadata)
 
-    def __creation(self, test_metadata, src_node_key='source', dest_node_key='destination'):
+    def __creation(self, route_tests):
         """
         Creates the base traceroute matrix from PerfSONAR MA data 
-        :param test_metadata: 
-        :param src_node_key: 
-        :param dest_node_key: 
+        :param route_tests: 
         :return: 
         """
-        matrix = set()
-
-        # Update matrix with source and destination addresses for each test
-        for singular_test in test_metadata.values():
-            matrix.update([singular_test[src_node_key], singular_test[dest_node_key]])
-
-        # Creates the destination information dict for all matrix sources to all destinations - all values set to '*'.
-        matrix_dict = {destination: {"rtt": "", "status": "", "fp_html": ""} for destination in list(matrix)}
-
-        json_dumps, json_loads = json.dumps, json.loads
-        # Combines destination dictionary into the source dictionary creating the final matrix
-        complete_matrix = {source: json_loads(json_dumps(matrix_dict)) for source in matrix}
-        return self.sort_dict_by_key(complete_matrix)
+        endpoints = set()
+        # Retrieves all destination and source ip addresses for the traceroute tests received from the perfsonar MA
+        [endpoints.update([route_test['source'], route_test['destination']]) for route_test in route_tests.values()]
+        matrix_list = list(endpoints)
+        # Creates the destination information dict for all matrix sources to all destinations -.
+        matrix = {src: {dest: {"rtt": "", "status": "", "fp_html": ""} for dest in matrix_list} for src in matrix_list}
+        return self.sort_dictionary_by_key(matrix)
 
     def update_matrix(self, source, destination, rtt, fp_html, status=""):
         """
@@ -55,13 +46,13 @@ class Matrix:
         return self.complete_matrix
 
     @staticmethod
-    def sort_dict_by_key(unsorted_dictionary):
+    def sort_dictionary_by_key(unsorted_dictionary):
         # Sorts an ordinary dictionary into a sorted ordered dictionary by IP address key
         return collections.OrderedDict(sorted(unsorted_dictionary.items(), key=lambda i: i[0]))
 
-    def create_matrix_web_page(self, end_date, rdns_query, jinja_template_fp="html_templates/matrix.html.j2"):
+    def create_matrix_web_page(self, end_date, rdns_query, jinja_template_fp):
         """
-        
+        Creates the matrix traceroute HTML table and renders the complete matrix web page from the Jinja2 template file
         :param end_date: 
         :param rdns_query: 
         :param jinja_template_fp: 
@@ -73,12 +64,12 @@ class Matrix:
         table_header_append = table_header.append
         table_contents_append = table_contents.append
 
+        # Formats the complete matrix into an HTML table
         for source in self.complete_matrix:
             # Since matrix is nxn we can use source as destination label
             domain_address = rdns_query(source)
             table_header_append("<td><div><span>{dest}</span></div></td>".format(dest=domain_address))
             table_contents_append("<tr><td>{source}</td>".format(source=domain_address))
-            # Fills the table with test data
             for destination in self.complete_matrix:
                 trace = self.complete_matrix[source][destination]
                 table_contents_append('<td id="{status}"><a href=".{fp_html}">{rtt}</a></td>'.format(**trace))

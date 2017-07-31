@@ -45,7 +45,7 @@ def five_number_summary(number_list):
     return {"min": "", "lower_quartile": "", "median": "", "upper_quartile": "", "max": "", "threshold": ""}
 
 
-def get_datetime_from_timestamp(*timestamps):
+def datetime_from_timestamps(*timestamps):
     """
     
     :param timestamps: 
@@ -73,8 +73,7 @@ class Traceroute:
         self.destination_ip = test_info['destination']
         self.trace_route_results = json_loader_saver.retrieve_json_from_url(test_info['api'])
         self.latest_trace_route = self.trace_route_results[len(self.trace_route_results) - 1]
-        self.start_date, self.end_date = get_datetime_from_timestamp(self.trace_route_results[0]["ts"],
-                                                                     self.latest_trace_route["ts"])
+        self.start_date, self.end_date = datetime_from_timestamps(self.trace_route_results[0]["ts"], self.latest_trace_route["ts"])
 
     def __generate_hop_lists(self, route_test):
         """
@@ -157,7 +156,7 @@ class Traceroute:
         for i in sorted_diff_route_index:
             route = self.__generate_hop_lists(self.trace_route_results[i])
             if (i+1 not in sorted_diff_route_index) or (previous_route != route) or (i == 0):
-                data = {'index': i, 'ts': get_datetime_from_timestamp(self.trace_route_results[i]["ts"]), 'route': route}
+                data = {'index': i, 'ts': datetime_from_timestamps(self.trace_route_results[i]["ts"]), 'route': route}
                 historical_routes.append(data)
             previous_route = route
         return historical_routes
@@ -184,7 +183,7 @@ class Traceroute:
             html_historical.append("</table>\n")
         return "".join(html_historical)
 
-    def create_traceroute_web_page(self, historical_routes, jinja_template_fp="html_templates/traceroute.html.j2"):
+    def create_traceroute_web_page(self, historical_routes, jinja_template_fp):
         html_route = []
         html_historical = self.__create_historical_route_html(historical_routes) if historical_routes else ""
 

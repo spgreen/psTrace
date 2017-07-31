@@ -19,6 +19,10 @@ PREVIOUS_ROUTE_FP = "json/previous_routes.json"
 FORCE_GRAPH_DATA_FP = "json/traceroute_force_graph.json"
 DASHBOARD_WEB_PAGE_FP = "json/force.html"
 
+J2_EMAIL_TEMPLATE_FP = "html_templates/email.html.j2"
+J2_TRACEROUTE_WEB_PAGE_FP = "html_templates/traceroute.html.j2"
+J2_MATRIX_WEB_PAGE_FP = "html_templates/matrix.html.j2"
+
 
 def acquire_traceroute_tests(ps_node_url, test_time_range=2400):
     """
@@ -90,7 +94,7 @@ def latest_route_analysis(test, traceroute_matrix, force_graph, rdns_query, prev
     if sys.platform == "win32":
         fp_html = fp_html.replace(":", ".")
     with open(fp_html, "w") as html_file:
-        html_file.write(traceroute.create_traceroute_web_page(historical_routes=historical_routes))
+        html_file.write(traceroute.create_traceroute_web_page(historical_routes, J2_TRACEROUTE_WEB_PAGE_FP))
 
     traceroute_rtt = traceroute.route_stats[-1]["rtt"]
     traceroute_matrix.update_matrix(source=source_ip, destination=destination_ip, rtt=traceroute_rtt, fp_html=fp_html)
@@ -129,10 +133,10 @@ def main(perfsonar_ma_url, time_period):
 
     if route_comparison.email_html:
         print("Notification email sent to %s" % ", ".join(EMAIL_TO))
-        route_comparison.send_email_alert(email_to=EMAIL_TO, email_from=EMAIL_FROM)
+        route_comparison.send_email_alert(EMAIL_TO, EMAIL_FROM, J2_EMAIL_TEMPLATE_FP)
 
     current_time = datetime.datetime.now().strftime("%c")
-    web_matrix = traceroute_matrix.create_matrix_web_page(current_time, rdns_query)
+    web_matrix = traceroute_matrix.create_matrix_web_page(current_time, rdns_query, J2_MATRIX_WEB_PAGE_FP)
     with open(DASHBOARD_WEB_PAGE_FP, "w") as web_matrix_file:
         web_matrix_file.write(web_matrix)
 
