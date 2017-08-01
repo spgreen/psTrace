@@ -2,7 +2,8 @@
 <html>
 <head>
     <meta charset='UTF-8'>
-    <meta http-equiv='refresh' content='1135'>
+    <meta http-equiv='refresh' content='1800'>
+    <title>perfSONAR Traceroute Overview</title>
     <style>
         body {
             font-family: Arial, Helvetica, sans-serif;
@@ -130,13 +131,16 @@
             var nodes = {};
             // Compute the distinct nodes from the links.
             links.forEach(function(link) {
+                if (link.node_point == 'source') {
+                    var start_node = link.node_point
+                }
                 link.source = nodes[link.source] || (nodes[link.source] = {
                     name: link.source,
-                    size: link.size
+                    node_point: start_node
                 });
                 link.target = nodes[link.target] || (nodes[link.target] = {
                     name: link.target,
-                    value: link.value
+                    node_point: link.node_point
                 });
             });
 
@@ -187,16 +191,16 @@
                 .enter().append('circle')
                 .attr('r', 8)
                 .attr('r', function(d) {
-                    if (typeof d.size != 'undefined' || d.size != null) {
-                        return d.size;
+                    if (d.node_point == 'source' || d.node_point == 'destination') {
+                        return 15
                     } else {
-                        return 8;
+                        return 8
                     }
                 })
                 .style('fill', function(d) {
-                    if (typeof d.size != 'undefined' || d.size != null) {
+                    if (d.node_point == "source") {
                         return '#545454'
-                    } else if (d.value != null) {
+                    } else if (d.node_point == 'destination') {
                         return 'white'
                     }
                 })

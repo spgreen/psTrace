@@ -19,14 +19,16 @@ class ForceGraph:
             return
 
         for i in range(len(hop_details)):
-            value = "end" if hop_details[i]["ip"] == destination_ip else "null"
-            size = 15 if i == 0 else 7
+            node_point = ""
+            if hop_details[i]["ip"] == destination_ip:
+                node_point = "destination"
+            elif i == 0:
+                node_point = "source"
 
             self.force_graph.append({"source": previous_hop[i],
                                      "target": hop_details[i]["domain"],
                                      "type": hop_details[i]["status"],
-                                     "size": size,
-                                     "value": value})
+                                     "node_point": node_point})
 
     def retrieve_graph(self):
         return self.force_graph
