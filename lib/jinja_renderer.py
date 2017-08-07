@@ -4,9 +4,11 @@ import os
 
 def render_template_output(template_fp, **template_variables):
     """
-    
-    :param template_fp: template file path 
+    Renders Jinja2 Templates with user submitted template variables
+    :param template_fp: template file path
+    :type template_fp: str
     :param template_variables: variables used within said template
+    :type template_variables: str
     :return: rendered page or None if template could not be found
     """
     path, template_file = os.path.split(template_fp)
