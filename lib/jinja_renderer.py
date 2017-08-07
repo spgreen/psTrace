@@ -1,19 +1,23 @@
 import jinja2
+import os
 
 
-def render_template_output(template_fp, **kwargs):
+def render_template_output(template_fp, **template_variables):
     """
     
     :param template_fp: template file path 
-    :param kwargs: variables used within the template
-    :return: rendered page
+    :param template_variables: variables used within said template
+    :return: rendered page or None if template could not be found
     """
-    template_loader = jinja2.FileSystemLoader(searchpath=".")
+    path, template_file = os.path.split(template_fp)
+    # Sets path to current directory with "." if path variable is empty
+    if not path:
+        path = '.'
+    template_loader = jinja2.FileSystemLoader(path)
     template_env = jinja2.Environment(loader=template_loader)
-    template_file = template_fp
     try:
         template = template_env.get_template(template_file)
     except jinja2.exceptions.TemplateNotFound:
-        print("Unable to find Jinja2 template")
+        print("Error: Unable to find Jinja2 template @ %s" % template_fp)
         return
-    return template.render(kwargs)
+    return template.render(template_variables)

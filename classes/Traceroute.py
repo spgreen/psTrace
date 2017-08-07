@@ -58,10 +58,10 @@ def datetime_from_timestamps(*timestamps):
 
 
 class Traceroute:
-    def __init__(self, test_info):
+    def __init__(self, traceroute_test_data):
         """
         
-        :param test_info: traceroute information gathered from the main perfSONAR query
+        :param traceroute_test_data: traceroute information gathered from the main perfSONAR query
         """
         self.route_stats = []
         self.different_route_index = set()
@@ -69,9 +69,9 @@ class Traceroute:
         self.destination_domain = ""
         self.hop_ip_list = ""
 
-        self.source_ip = test_info['source']
-        self.destination_ip = test_info['destination']
-        self.trace_route_results = json_loader_saver.retrieve_json_from_url(test_info['api'])
+        self.source_ip = traceroute_test_data['source']
+        self.destination_ip = traceroute_test_data['destination']
+        self.trace_route_results = json_loader_saver.retrieve_json_from_url(traceroute_test_data['api'])
         self.latest_trace_route = self.trace_route_results[len(self.trace_route_results) - 1]
         self.start_date, self.end_date = datetime_from_timestamps(self.trace_route_results[0]["ts"], self.latest_trace_route["ts"])
 
@@ -108,7 +108,7 @@ class Traceroute:
                 continue
         return rtt
 
-    def traceroute_analysis(self):
+    def perform_traceroute_analysis(self):
         """
         Performs latest_route_analysis on the most recent traceroute against previous traceroute test
         :return: route statistics for the most recent traceroute
@@ -146,7 +146,7 @@ class Traceroute:
         """
         previous_route = ""
         historical_routes = []
-        # Ends if no different routes were found at retrieve_all_rtts_for_hop during traceroute_analysis call
+        # Ends if no different routes were found at retrieve_all_rtts_for_hop during perform_traceroute_analysis call
         if not self.different_route_index:
             return
         # Reverse sort the different route index list as higher indexes indicate more recent dates

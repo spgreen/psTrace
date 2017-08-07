@@ -3,6 +3,7 @@ import sys
 import datetime
 import urllib.parse
 import argparse
+import os
 
 from classes import Matrix
 from classes import ForceGraph
@@ -14,14 +15,22 @@ from lib import json_loader_saver
 EMAIL_TO = ["root@localhost"]
 EMAIL_FROM = "pstrace@localhost"
 
-REVERSE_DNS_FP = "json/rdns.json"
-PREVIOUS_ROUTE_FP = "json/previous_routes.json"
-FORCE_GRAPH_DATA_FP = "json/traceroute_force_graph.json"
-DASHBOARD_WEB_PAGE_FP = "json/force.html"
+HTML_DIR = "html"
+JSON_DIR = "json"
+TEMPLATE_DIR = "html_templates"
 
-J2_EMAIL_TEMPLATE_FP = "html_templates/email.html.j2"
-J2_TRACEROUTE_WEB_PAGE_FP = "html_templates/traceroute.html.j2"
-J2_MATRIX_WEB_PAGE_FP = "html_templates/matrix.html.j2"
+# HTML Folder
+FORCE_GRAPH_DATA_FP = os.path.join(HTML_DIR, "traceroute_force_graph.json")
+DASHBOARD_WEB_PAGE_FP = os.path.join(HTML_DIR, "index.html")
+
+# JSON Folder
+REVERSE_DNS_FP = os.path.join(JSON_DIR, "rdns.json")
+PREVIOUS_ROUTE_FP = os.path.join(JSON_DIR, "previous_routes.json")
+
+# Jinja2 Templates
+J2_EMAIL_TEMPLATE_FP = os.path.join(TEMPLATE_DIR, "email.html.j2")
+J2_TRACEROUTE_WEB_PAGE_FP = os.path.join(TEMPLATE_DIR, "traceroute.html.j2")
+J2_MATRIX_WEB_PAGE_FP = os.path.join(TEMPLATE_DIR, "matrix.html.j2")
 
 
 def acquire_traceroute_tests(ps_node_url, test_time_range=2400):
@@ -46,16 +55,16 @@ def acquire_traceroute_tests(ps_node_url, test_time_range=2400):
     return data_dict
 
 
-def latest_route_analysis(test, traceroute_matrix, force_graph, rdns_query, previous_route_compare):
+def latest_route_analysis(traceroute_test_data, traceroute_matrix, force_graph, rdns_query, previous_route_compare):
     """
     
-    :param test: 
+    :param traceroute_test_data: 
     :param traceroute_matrix: 
     :param force_graph: 
     :param rdns_query: 
     :return: 
     """
-    traceroute = Traceroute.Traceroute(test)
+    traceroute = Traceroute.Traceroute(traceroute_test_data)
 
     source_ip = traceroute.source_ip
     destination_ip = traceroute.destination_ip
@@ -72,7 +81,7 @@ def latest_route_analysis(test, traceroute_matrix, force_graph, rdns_query, prev
 
     traceroute.source_domain, traceroute.destination_domain = rdns_query(source_ip, destination_ip)
 
-    traceroute.traceroute_analysis()
+    traceroute.perform_traceroute_analysis()
 
     # Retrieves the domain names for all IP address found within the traceroute test
     hop_domain_list = rdns_query(*traceroute.hop_ip_list)
@@ -89,11 +98,11 @@ def latest_route_analysis(test, traceroute_matrix, force_graph, rdns_query, prev
     if historical_routes:
         [route.update({"route": rdns_query(*route["route"])}) for route in historical_routes]
 
-    fp_html = "./html/{source}-to-{dest}.html".format(source=source_ip, dest=destination_ip)
+    fp_html = "{source}-to-{dest}.html".format(source=source_ip, dest=destination_ip)
     # Replaces the colons(:) for IPv6 addresses to full-stops(.) to prevent file path issues when saving files on Win32
     if sys.platform == "win32":
         fp_html = fp_html.replace(":", ".")
-    with open(fp_html, "w") as html_file:
+    with open(os.path.join(HTML_DIR, fp_html), "w") as html_file:
         html_file.write(traceroute.create_traceroute_web_page(historical_routes, J2_TRACEROUTE_WEB_PAGE_FP))
 
     traceroute_rtt = traceroute.route_stats[-1]["rtt"]
@@ -104,7 +113,7 @@ def latest_route_analysis(test, traceroute_matrix, force_graph, rdns_query, prev
 
 
 def main(perfsonar_ma_url, time_period):
-    tests = ''
+    traceroute_metadata = ''
     # Force Graph initialisation
     force_graph = ForceGraph.ForceGraph()
 
@@ -118,18 +127,19 @@ def main(perfsonar_ma_url, time_period):
 
     print("Acquiring traceroute tests... ", end="")
     try:
-        tests = acquire_traceroute_tests(perfsonar_ma_url, test_time_range=time_period)
-        print("%d test(s) received!" % len(tests))
+        traceroute_metadata = acquire_traceroute_tests(perfsonar_ma_url, test_time_range=time_period)
+        print("%d test(s) received!" % len(traceroute_metadata))
     except TypeError:
         print("Not a valid PerfSONAR Traceroute MA")
         exit()
 
     print("Creating Matrix.... ", end="")
-    traceroute_matrix = Matrix.Matrix(tests)
+    traceroute_matrix = Matrix.Matrix(traceroute_metadata)
     print("Matrix Created")
 
     # Computes the trace route data for all tests found within the perfSONAR MA
-    [latest_route_analysis(test, traceroute_matrix, force_graph, rdns_query, route_compare) for test in tests.values()]
+    [latest_route_analysis(traceroute_test, traceroute_matrix, force_graph, rdns_query, route_compare)
+     for traceroute_test in traceroute_metadata.values()]
 
     if route_comparison.email_html:
         print("Notification email sent to %s" % ", ".join(EMAIL_TO))

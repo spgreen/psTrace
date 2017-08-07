@@ -13,7 +13,7 @@ class RouteComparison:
         Compares the current route with routes from when the previous test ran
         :param source_domain: Source Address
         :param destination_domain: Destination Address
-        :param current_route_list: Current trace route in a list
+        :param current_route_list: Current trace route list
         :return: 
         """
         try:
@@ -44,12 +44,14 @@ class RouteComparison:
         length_difference = abs(previous_route_length - current_route_length)
         max_length = previous_route_length
 
+        # Adds "*" padding to the shortest route list to ensure current and previous route lists have equal length
         if current_route_length > previous_route_length:
             max_length = current_route_length
             previous_route_list.extend(["*"] * length_difference)
         elif current_route_length < previous_route_length:
             current_route_list.extend(["*"] * length_difference)
 
+        # Creates an HTML table which showing a comparison between the previous and current route
         email_contents = ["<table>\n<tr><th>Hop:</th><th>Previous Route:</th><th>Current Route:</th></tr>"]
         for i in range(max_length):
             index, p_hop, c_hop = (i + 1, previous_route_list[i], current_route_list[i])

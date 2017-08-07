@@ -72,7 +72,7 @@ class Matrix:
             table_contents_append("<tr><td>{source}</td>".format(source=domain_address))
             for destination in self.complete_matrix:
                 trace = self.complete_matrix[source][destination]
-                table_contents_append('<td id="{status}"><a href=".{fp_html}">{rtt}</a></td>'.format(**trace))
+                table_contents_append('<td id="{status}"><a href="{fp_html}">{rtt}</a></td>'.format(**trace))
             table_contents_append("</tr>\n")
         table_header_append("</tr>\n")
 
