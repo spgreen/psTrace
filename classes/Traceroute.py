@@ -65,9 +65,6 @@ class Traceroute:
         """
         self.route_stats = []
         self.different_route_index = set()
-        self.source_domain = ""
-        self.destination_domain = ""
-        self.hop_ip_list = ""
 
         self.source_ip = traceroute_test_data['source']
         self.destination_ip = traceroute_test_data['destination']
@@ -75,13 +72,13 @@ class Traceroute:
         self.latest_trace_route = self.trace_route_results[len(self.trace_route_results) - 1]
         self.start_date, self.end_date = datetime_from_timestamps(self.trace_route_results[0]["ts"], self.latest_trace_route["ts"])
 
-    def __generate_hop_lists(self, route_test):
+    def __generate_hop_list(self, route_test):
         """
         Retrieves the traceroute from traceroute test index from self.trace_route_results[index]
         :param route_test: raw trace route test from self.trace_route_results[index]
         :return: trace route for traceroute_test
         """
-        return [hop["ip"] if "ip" in hop else "null tag:%s:%d" % (self.destination_domain, index + 1)
+        return [hop["ip"] if "ip" in hop else "null tag:%s:%d" % (self.destination_ip, index + 1)
                 for (index, hop) in enumerate(route_test["val"])]
 
     def retrieve_all_rtts_for_hop(self, hop_index, hop_ip):
@@ -114,9 +111,9 @@ class Traceroute:
         :return: route statistics for the most recent traceroute
         """
         # Retrieves latest route from self.trace_route_results
-        self.hop_ip_list = self.__generate_hop_lists(self.latest_trace_route)
+        hop_ip_list = self.__generate_hop_list(self.latest_trace_route)
 
-        for (hop_index, current_hop_ip) in enumerate(self.hop_ip_list):
+        for (hop_index, current_hop_ip) in enumerate(hop_ip_list):
             # Goes through every test comparing the IP occurring at the same hop_index of the latest trace route
             rtt = []
             if "null tag:" not in current_hop_ip:
@@ -141,8 +138,8 @@ class Traceroute:
 
     def historical_diff_routes(self):
         """
-        Acquires the trace routes that are different from the most recent trace route test and stores them within a list
-        :return: 
+        Returns a list of different historical routes that occurred during the test period
+        :return: list
         """
         previous_route = ""
         historical_routes = []
@@ -154,7 +151,7 @@ class Traceroute:
         # Retrieves all of the different routes that occurred during the data period and stores the routes within the
         # historical_routes list
         for i in sorted_diff_route_index:
-            route = self.__generate_hop_lists(self.trace_route_results[i])
+            route = self.__generate_hop_list(self.trace_route_results[i])
             if (i+1 not in sorted_diff_route_index) or (previous_route != route) or (i == 0):
                 data = {'index': i, 'ts': datetime_from_timestamps(self.trace_route_results[i]["ts"]), 'route': route}
                 historical_routes.append(data)
@@ -164,7 +161,7 @@ class Traceroute:
     def latest_trace_output(self):
         """
         Prints out all of the current route with appropriate statistics
-        :return: 
+        :return: None
         """
         print("\nTraceroute to {ip}\n{end_date}\n".format(ip=self.destination_ip, end_date=self.end_date))
         print("Hop:\tIP:\t\t\tRTT: Min: Median: Threshold: Notice:\tDomain:\n")

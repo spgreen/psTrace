@@ -55,7 +55,7 @@ def acquire_traceroute_tests(ps_node_url, test_time_range=2400):
     return data_dict
 
 
-def latest_route_analysis(traceroute_test_data, traceroute_matrix, force_graph, rdns_query, previous_route_compare):
+def latest_route_analysis(traceroute_test_data, traceroute_matrix, rdns_query):
     """
     
     :param traceroute_test_data: 
@@ -79,24 +79,20 @@ def latest_route_analysis(traceroute_test_data, traceroute_matrix, force_graph, 
         print("Error: Only 1 test available!")
         return
 
-    traceroute.source_domain, traceroute.destination_domain = rdns_query(source_ip, destination_ip)
-
     traceroute.perform_traceroute_analysis()
 
-    # Retrieves the domain names for all IP address found within the traceroute test
-    hop_domain_list = rdns_query(*traceroute.hop_ip_list)
-    hop_domain_list_starting_at_source = [rdns_query(source_ip)] + hop_domain_list[:-1]
-    # Adds domain values of each hop within the traceroute.route_stats dictionary due to object variable referencing
-    [hop.update({"domain": hop_domain_list[index]}) for index, hop in enumerate(traceroute.route_stats)]
+    # Adds domain values to each hop within the traceroute.route_stats dictionary
+    # due to object variable referencing
+    for index, hop in enumerate(traceroute.route_stats):
+        hop.update({"domain": rdns_query(hop['ip'])})
 
-    # Checks and stores previous routes found within the traceroute test data
-    previous_route_compare(traceroute.source_domain, traceroute.destination_domain, hop_domain_list)
     traceroute.latest_trace_output()
 
     historical_routes = traceroute.historical_diff_routes()
     # Adds domain name to each route within historical routes
     if historical_routes:
-        [route.update({"route": rdns_query(*route["route"])}) for route in historical_routes]
+        for historical_route in historical_routes:
+            historical_route.update({"route": rdns_query(*historical_route["route"])})
 
     fp_html = "{source}-to-{dest}.html".format(source=source_ip, dest=destination_ip)
     # Replaces the colons(:) for IPv6 addresses to full-stops(.) to prevent file path issues when saving files on Win32
@@ -108,8 +104,7 @@ def latest_route_analysis(traceroute_test_data, traceroute_matrix, force_graph, 
     traceroute_rtt = traceroute.route_stats[-1]["rtt"]
     traceroute_matrix.update_matrix(source=source_ip, destination=destination_ip, rtt=traceroute_rtt, fp_html=fp_html)
 
-    # Creates force nodes between previous and current hop
-    force_graph.create_force_nodes(traceroute.route_stats, hop_domain_list_starting_at_source, destination_ip)
+    return traceroute.route_stats
 
 
 def main(perfsonar_ma_url, time_period):
@@ -140,16 +135,25 @@ def main(perfsonar_ma_url, time_period):
     print("Matrix Created")
 
     # Computes the trace route data for all tests found within the perfSONAR MA
-    [latest_route_analysis(traceroute_test, traceroute_matrix, force_graph, rdns_query, route_compare)
-     for traceroute_test in traceroute_metadata.values()]
+    for traceroute in traceroute_metadata.values():
+        source_domain, destination_domain = rdns_query(traceroute["source"], traceroute["destination"])
+        route_stats = latest_route_analysis(traceroute, traceroute_matrix, rdns_query)
+
+        # Creates the hop list from the route_stats return
+        route = rdns_query(*[hop["ip"] for hop in route_stats])
+        route_from_source = [source_domain] + route[:-1]
+        # Creates force nodes between previous and current hop
+        force_graph.create_force_nodes(route_stats, route_from_source, traceroute["destination"])
+        # Checks and stores previous routes found within the traceroute test data
+        route_compare(source_domain, destination_domain, route)
 
     if route_comparison.email_contents:
         print("Notification email sent to %s" % ", ".join(EMAIL_TO))
         route_comparison.send_email_alert(EMAIL_TO, EMAIL_FROM, J2_EMAIL_TEMPLATE_FP)
 
-    current_time = datetime.datetime.now().strftime("%c")
-    web_matrix = traceroute_matrix.create_matrix_web_page(current_time, rdns_query, J2_MATRIX_WEB_PAGE_FP)
     with open(DASHBOARD_WEB_PAGE_FP, "w") as web_matrix_file:
+        current_time = datetime.datetime.now().strftime("%c")
+        web_matrix = traceroute_matrix.create_matrix_web_page(current_time, rdns_query, J2_MATRIX_WEB_PAGE_FP)
         web_matrix_file.write(web_matrix)
 
     # Dictionary + file path for force_graph, rdns and route_comparison
@@ -157,7 +161,8 @@ def main(perfsonar_ma_url, time_period):
                      (rdns.rdns_store, REVERSE_DNS_FP),
                      (route_comparison.previous_routes, PREVIOUS_ROUTE_FP))
 
-    [json_loader_saver.save_dictionary_as_json_file(i[0], i[1]) for i in dicts_to_save]
+    for contents, file_path in dicts_to_save:
+        json_loader_saver.save_dictionary_as_json_file(contents, file_path)
 
 
 if __name__ == '__main__':
