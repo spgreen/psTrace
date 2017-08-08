@@ -118,10 +118,12 @@ def main(perfsonar_ma_url, time_period):
     force_graph = ForceGraph.ForceGraph()
 
     rdns = ReverseDNS.ReverseDNS()
+    # Loads reverse DNS information from a JSON file found at REVERSE_DNS_FP
     json_loader_saver.update_dictionary_from_json_file(rdns.rdns_store, REVERSE_DNS_FP)
     rdns_query = rdns.query
 
     route_comparison = RouteComparison.RouteComparison()
+    # Loads previous route information from a JSON file found at PREVIOUS_ROUTE_FP
     json_loader_saver.update_dictionary_from_json_file(route_comparison.previous_routes, PREVIOUS_ROUTE_FP)
     route_compare = route_comparison.compare_and_update
 
@@ -141,7 +143,7 @@ def main(perfsonar_ma_url, time_period):
     [latest_route_analysis(traceroute_test, traceroute_matrix, force_graph, rdns_query, route_compare)
      for traceroute_test in traceroute_metadata.values()]
 
-    if route_comparison.email_html:
+    if route_comparison.email_contents:
         print("Notification email sent to %s" % ", ".join(EMAIL_TO))
         route_comparison.send_email_alert(EMAIL_TO, EMAIL_FROM, J2_EMAIL_TEMPLATE_FP)
 
@@ -165,4 +167,3 @@ if __name__ == '__main__':
                         type=int)
     args = parser.parse_args()
     main(args.perfsonar_base, args.time_period)
-
