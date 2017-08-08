@@ -4,60 +4,64 @@ from lib import jinja_renderer
 
 
 class Matrix:
+    """
+    Creates a matrix based on PerfSONAR Measurement Archive (MA) traceroute/path metadata 
+    and updates the matrix when traceroute information is received.
+    The class calls on the jinja_renderer function to load Jinja2 templates
+    to render the matrix web page from the template file once all of the
+    matrix tests have been updated.
+    """
     def __init__(self, test_metadata):
         """
-        Sets up the initial source to destination results matrix from the trace route/path metadata 
-        of a PerfSONAR Measurement Archive (MA)
-        :param test_metadata: 
+        :param test_metadata: Metadata of all traceroute/path tests found within a PerfSOANR MA
         :type test_metadata: dict
         """
-        self.complete_matrix = self.__creation(test_metadata)
+        self.matrix = self.__creation(test_metadata)
 
     def __creation(self, test_metadata):
         """
-        Creates the base matrix from PerfSONAR MA data 
+        Creates the base matrix from the PerfSONAR MA traceroute/path metadata
+
         :param test_metadata: PerfSONAR MA trace route/path metadata for all tests within said MA
         :type test_metadata: dict
         :return: sorted matrix dictionary
         """
         endpoints = set()
-        # Retrieves all destination and source ip addresses for the traceroute tests received from the perfsonar MA
-        [endpoints.update([route_test['source'], route_test['destination']]) for route_test in test_metadata.values()]
-        # TODO:// Change matrix to only form source entries from PerfSONAR MA Data
-        # dest_endpoints = list({single_test['destination'] for single_test in test_metadata.values()})
-        # src_endpoints = list({single_test['source'] for single_test in test_metadata.values()})
-        # dest_endpoints.extend(src_endpoints)
-        matrix_list = list(endpoints)
-        # Creates the destination information dict for all matrix sources to all destinations -.
-        matrix = {src: {dest: {"rtt": "", "status": "", "fp_html": ""} for dest in matrix_list} for src in matrix_list}
+        # Retrieves all endpoint ip addresses from the the PerfSONAR MA metadata
+        for route_test in test_metadata.values():
+            endpoints.update([route_test['source'], route_test['destination']])
+        endpoints = list(endpoints)
+        # Creates the destination information dict for all matrix sources to all destinations.
+        matrix = {src: {dest: {"rtt": "", "fp_html": ""} for dest in endpoints} for src in endpoints}
         return self.sort_dictionary_by_key(matrix)
 
-    def update_matrix(self, source, destination, rtt, fp_html, status=""):
+    def update_matrix(self, source, destination, rtt, fp_html):
         """
-        Updates matrix with trace route round-trip times, html file path and status for the specific test
+        Updates matrix with trace route round-trip times, html file path
+        and status for the specific test
+
         :param source: Source IP address
         :param destination: Destination IP address
-        :param rtt: Round trip time to the destination IP address 
+        :param rtt: Round trip time to the destination IP address
         :param fp_html: File path of the HTML file containing a detailed view of the specific test
-        :param status: 
-        :return: 
+        :return: None
         """
         if not rtt:
-            self.complete_matrix[source][destination]["rtt"] = "psTimeout"
-            return self.complete_matrix
+            self.matrix[source][destination]["rtt"] = "psTimeout"
+            return self.matrix
 
-        elif source not in self.complete_matrix.keys():
+        elif source not in self.matrix.keys():
             # Used to include sources not found from the initial query"""
             return
 
-        if not self.complete_matrix[source][destination]["rtt"]:
-            self.complete_matrix[source][destination].update({"rtt": rtt, "status": status, "fp_html": fp_html})
+        if not self.matrix[source][destination]["rtt"]:
+            self.matrix[source][destination].update({"rtt": rtt, "fp_html": fp_html})
 
     def output(self):
         """
-        :return: dictionary of the trace route matrix 
+        :return: dict; current trace route matrix state
         """
-        return self.complete_matrix
+        return self.matrix
 
     @staticmethod
     def sort_dictionary_by_key(unsorted_dictionary):
@@ -71,8 +75,9 @@ class Matrix:
 
     def create_matrix_web_page(self, date_time, rdns_query, jinja_template_fp):
         """
-        Creates the matrix trace route HTML table and renders the complete web page 
-        from the Jinja2 template file plus the newly generated HTML table
+        Creates the matrix trace route HTML table and renders the complete web page
+        from the Jinja2 template file plus the newly generated HTML table.
+
         :param date_time: Date and time of matrix creation. Create this here?
         :param rdns_query: rdns query function from ReverseDNS.py Class
         :param jinja_template_fp: File path of the Jinja2 template that will be used
@@ -81,21 +86,24 @@ class Matrix:
         table_contents = []
         table_header = ["<tr><td>S/D</td>"]
 
-        table_header_append = table_header.append
-        table_contents_append = table_contents.append
+        append_table_header = table_header.append
+        append_table_contents = table_contents.append
 
         # Formats the complete matrix into an HTML table
-        for source in self.complete_matrix:
+        for source in self.matrix:
             # Since matrix is nxn we can use source as destination label
             domain_address = rdns_query(source)
-            table_header_append("<td><div><span>{dest}</span></div></td>".format(dest=domain_address))
-            table_contents_append("<tr><td>{source}</td>".format(source=domain_address))
-            for destination in self.complete_matrix:
-                trace = self.complete_matrix[source][destination]
-                table_contents_append('<td id="{status}"><a href="{fp_html}">{rtt}</a></td>'.format(**trace))
-            table_contents_append("</tr>\n")
-        table_header_append("</tr>\n")
+            append_table_header("<td><div><span>%s</span></div></td>" % domain_address)
+            append_table_contents("<tr><td>%s</td>" % domain_address)
+            for destination in self.matrix:
+                append_table_contents('<td><a href="{fp_html}">{rtt}</a></td>'
+                                      .format(**self.matrix[source][destination]))
+
+            append_table_contents("</tr>\n")
+        append_table_header("</tr>\n")
 
         matrix_table = "".join(table_header + table_contents)
 
-        return jinja_renderer.render_template_output(jinja_template_fp, matrix=matrix_table, end_date=date_time)
+        return jinja_renderer.render_template_output(jinja_template_fp,
+                                                     matrix=matrix_table,
+                                                     end_date=date_time)

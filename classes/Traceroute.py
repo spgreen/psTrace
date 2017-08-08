@@ -120,7 +120,7 @@ class Traceroute:
             # Goes through every test comparing the IP occurring at the same hop_index of the latest trace route
             rtt = []
             if "null tag:" not in current_hop_ip:
-                rtt = self.retrieve_all_rtts_for_hop(hop_index=hop_index,  hop_ip=current_hop_ip)
+                rtt = self.retrieve_all_rtts_for_hop(hop_index=hop_index, hop_ip=current_hop_ip)
 
             hop_details = five_number_summary(rtt)
             # Save last value of the rtt as it is from the latest trace route; save empty value if rtt does not exist
@@ -202,7 +202,7 @@ class Traceroute:
 
         html_route = "".join(html_route)
 
-        return jinja_renderer.render_template_output(template_fp= jinja_template_fp,
+        return jinja_renderer.render_template_output(template_fp=jinja_template_fp,
                                                      source_ip=self.source_ip,
                                                      dest_ip=self.destination_ip,
                                                      start_date=self.start_date,
