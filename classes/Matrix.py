@@ -16,6 +16,7 @@ class Matrix:
         :param test_metadata: Metadata of all traceroute/path tests found within a PerfSOANR MA
         :type test_metadata: dict
         """
+        self.endpoints = None
         self.matrix = self.__creation(test_metadata)
 
     def __creation(self, test_metadata):
@@ -26,13 +27,14 @@ class Matrix:
         :type test_metadata: dict
         :return: sorted matrix dictionary
         """
-        endpoints = set()
         # Retrieves all endpoint ip addresses from the the PerfSONAR MA metadata
-        for route_test in test_metadata.values():
-            endpoints.update([route_test['source'], route_test['destination']])
-        endpoints = list(endpoints)
+        source_ip_addresses = list({route_test['source'] for route_test in test_metadata.values()})
+        self.endpoints = list({route_test['destination'] for route_test in test_metadata.values()})
+        self.endpoints.extend(source_ip_addresses)
+        self.endpoints.sort()
+
         # Creates the destination information dict for all matrix sources to all destinations.
-        matrix = {src: {dest: {"rtt": "", "fp_html": ""} for dest in endpoints} for src in endpoints}
+        matrix = {src: {dst: {"rtt": "", "fp_html": ""} for dst in self.endpoints} for src in source_ip_addresses}
         return self.sort_dictionary_by_key(matrix)
 
     def update_matrix(self, source, destination, rtt, fp_html):
@@ -89,18 +91,18 @@ class Matrix:
         append_table_header = table_header.append
         append_table_contents = table_contents.append
 
-        # Formats the complete matrix into an HTML table
-        for source in self.matrix:
-            # Since matrix is nxn we can use source as destination label
-            domain_address = rdns_query(source)
-            append_table_header("<td><div><span>%s</span></div></td>" % domain_address)
-            append_table_contents("<tr><td>%s</td>" % domain_address)
-            for destination in self.matrix:
-                append_table_contents('<td><a href="{fp_html}">{rtt}</a></td>'
-                                      .format(**self.matrix[source][destination]))
-
-            append_table_contents("</tr>\n")
+        # Creates the HTML table header
+        for endpoint in self.endpoints:
+            append_table_header("<td><div><span>%s</span></div></td>" % rdns_query(endpoint))
         append_table_header("</tr>\n")
+
+        # Create the matrix contents as a HTML table
+        for source in self.matrix:
+            append_table_contents("<tr><td>%s</td>" % rdns_query(source))
+            for endpoint in self.endpoints:
+                append_table_contents('<td><a href="{fp_html}">{rtt}</a></td>'
+                                      .format(**self.matrix[source][endpoint]))
+            append_table_contents("</tr>\n")
 
         matrix_table = "".join(table_header + table_contents)
 
