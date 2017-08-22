@@ -43,10 +43,6 @@ def retrieve_json_from_url(json_url, url_encoding='utf-8'):
     :return: 
     """
     ssl_context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLSv1)
-    try:
-        json_data = urllib.request.urlopen(json_url, timeout=10, context=ssl_context)
-    except urllib.error.URLError:
-        print("Retrieval failed")
-        return
+    json_data = urllib.request.urlopen(json_url, timeout=10, context=ssl_context)
     json_string = json_data.read().decode(url_encoding)
     return json.loads(json_string)

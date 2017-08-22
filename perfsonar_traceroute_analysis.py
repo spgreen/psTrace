@@ -70,13 +70,9 @@ def latest_route_analysis(traceroute_test_data, traceroute_matrix, rdns_query):
     destination_ip = traceroute.destination_ip
 
     # Checks if test results exist after trying to retrieve traceroute test data from the perfSONAR MA
-    if not traceroute.trace_route_results:
-        print("Timeout receiving data from perfSONAR server\n Traceroute: %s to %s\n" % (source_ip, destination_ip))
-        # Update Traceroute Matrix with timeout message
-        traceroute_matrix.update(source=source_ip, destination=destination_ip)
-        return
-    elif len(traceroute.trace_route_results) <= 0:
+    if len(traceroute.trace_route_results) <= 1:
         print("Error: Only 1 test available!")
+        # TODO: Raise error for single tests
         return
 
     traceroute.perform_traceroute_analysis()
@@ -126,7 +122,7 @@ def main(perfsonar_ma_url, time_period):
     try:
         traceroute_metadata = acquire_traceroute_tests(perfsonar_ma_url, test_time_range=time_period)
         print("%d test(s) received!" % len(traceroute_metadata))
-    except TypeError:
+    except urllib.error.HTTPError:
         print("Not a valid PerfSONAR Traceroute MA")
         exit()
 
@@ -136,9 +132,17 @@ def main(perfsonar_ma_url, time_period):
 
     # Computes the trace route data for all tests found within the perfSONAR MA
     for traceroute in traceroute_metadata.values():
-        source_domain, destination_domain = rdns_query(traceroute["source"], traceroute["destination"])
-        route_stats = latest_route_analysis(traceroute, traceroute_matrix, rdns_query)
+        try:
+            route_stats = latest_route_analysis(traceroute, traceroute_matrix, rdns_query)
+        except urllib.error.HTTPError:
+            print("Error: Unable to retrieve data. Retrieving next test....")
+            traceroute_matrix.update_matrix(source=traceroute["source"],
+                                            destination=traceroute["destination"],
+                                            rtt=False,
+                                            fp_html=False)
+            continue
 
+        source_domain, destination_domain = rdns_query(traceroute["source"], traceroute["destination"])
         # Creates the hop list from the route_stats return
         route = rdns_query(*[hop["ip"] for hop in route_stats])
         route_from_source = [source_domain] + route[:-1]
