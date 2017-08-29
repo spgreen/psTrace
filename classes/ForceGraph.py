@@ -51,7 +51,7 @@ class ForceGraph:
 
     def create_force_nodes(self, hop_details, previous_hop, destination_ip):
         """
-        Creates the force node dictionary entry that will be appended to the force graph list.
+        Creates a force node dictionary entry which will be appended to the force graph list.
         Example dictionary:
             {
                 "target": "et-1-0-0.singaren.net.sg",

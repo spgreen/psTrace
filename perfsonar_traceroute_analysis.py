@@ -60,7 +60,6 @@ def latest_route_analysis(traceroute_test_data, traceroute_matrix, rdns_query):
     
     :param traceroute_test_data: 
     :param traceroute_matrix: 
-    :param force_graph: 
     :param rdns_query: 
     :return: 
     """
@@ -144,11 +143,11 @@ def main(perfsonar_ma_url, time_period):
 
         source_domain, destination_domain = rdns_query(traceroute["source"], traceroute["destination"])
         # Creates the hop list from the route_stats return
-        route = rdns_query(*[hop["ip"] for hop in route_stats])
+        route = [hop["domain"] for hop in route_stats]
         route_from_source = [source_domain] + route[:-1]
         # Creates force nodes between previous and current hop
         force_graph.create_force_nodes(route_stats, route_from_source, traceroute["destination"])
-        # Checks and stores previous routes found within the traceroute test data
+        # Compares current route with previous and stores current route in PREVIOUS_ROUTE_FP
         route_compare(source_domain, destination_domain, route)
 
     if route_comparison.email_contents:
