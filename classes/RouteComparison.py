@@ -1,7 +1,8 @@
 import copy
-from lib import jinja_renderer
+
+from conf.email_configuration import EMAIL_TO, EMAIL_FROM, EMAIL_SUBJECT, EMAIL_SERVER
 from lib import email
-from email_configuration import EMAIL_TO, EMAIL_FROM, EMAIL_SUBJECT, EMAIL_SERVER
+from lib import jinja_renderer
 
 
 class RouteComparison:
