@@ -31,14 +31,15 @@ psTrace is a traceroute analysis tool written in PythonV3 which retrieves tracer
 
        $ python perfsonar_traceroute_analysis.py <PS MA base URL or IP> <period in seconds>
   
-  or
+      or
   
        $ python3 perfsonar_traceroute_analysis.py <PS MA base URL or IP> <period in seconds>
        
   depending on your system
   
-  1. **``<PS MA base URL or IP>``** is either the IP address or base url without http:// or https:// of the perfSONAR Measurement archive you wish to retrieve traceroute/tracepath data from.
-  2. **``<period in seconds>``** - e.g. 86400 = 1 day, 1290600 = 2 weeks, etc 
+  - **``<PS MA base URL or IP>``** is either the IP address or base url without http:// or https:// of the perfSONAR Measurement archive you wish to retrieve traceroute/tracepath data from.
+     
+  - **``<period in seconds>``** - e.g. 86400 = 1 day, 1290600 = 2 weeks, etc 
   
 4. Results will be stored as HTML pages within the psTrace `html` folder
 
