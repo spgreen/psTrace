@@ -8,7 +8,7 @@ psTrace is a traceroute analysis tool written in PythonV3 which retrieves tracer
 - Python Version 3.5.2 +
 - Python Jinja2 Template module - Install via pip for PythonV3
 
-      pip install Jinja2
+      $ pip install Jinja2
 
 - Web Server (Apache, Nginx, etc)
 - SMTP Server (Postfix, etc) that does not require authentication for sending out email alerts 
@@ -18,12 +18,12 @@ psTrace is a traceroute analysis tool written in PythonV3 which retrieves tracer
 
 1. Clone repository into your preferred directory
 
-        git clone https://github.com/spgreen/psTrace.git
+        $ git clone https://github.com/spgreen/psTrace.git
              
 2. Soft link the psTrace `html` folder to the web document root that will be served by Apache. 
    <br>e.g. /var/www/html/ is the usual default directory served by Apache. <br>**Note**: You will need to remove the html folder if it exist otherwise an error will occur creating the soft link
    
-        ln -s /full/path/to/pstrace/html/folder/ /var/www/html
+        $ ln -s /full/path/to/pstrace/html/folder/ /var/www/html
     
 3. Edit the email constants within `conf/email_configuration.py` to values appropriate to your environment. Currently only supports sending emails to a SMTP server that does NOT require authentication. 
 
@@ -40,7 +40,7 @@ psTrace is a traceroute analysis tool written in PythonV3 which retrieves tracer
   1. **``<PS MA base URL or IP>``** is either the IP address or base url without http:// or https:// of the perfSONAR Measurement archive you wish to retrieve traceroute/tracepath data from.
   2. **``<period in seconds>``** - e.g. 86400 = 1 day, 1290600 = 2 weeks, etc 
   
-4. Results will be stored as HTML pages within the `html` folder
+4. Results will be stored as HTML pages within the psTrace `html` folder
 
 5. Access results by using a web browser and type the address of the web server hosting the results. 
 
