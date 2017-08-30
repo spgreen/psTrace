@@ -34,12 +34,12 @@ J2_MATRIX_WEB_PAGE_FP = os.path.join(TEMPLATE_DIR, "matrix.html.j2")
 
 def acquire_traceroute_tests(ps_node_url, test_time_range=2400):
     """
-
-    :param ps_node_url: 
-    :param test_time_range: 
+    Acquires all recent traceroute results from a PerfSONAR Measurement Archive
+    :param ps_node_url: either URL such without http(s):// or IP address. e.g. ps_ma.net.zz or 192.168.0.1
+    :param test_time_range: time in seconds
     :return: 
     """
-    ps_url = "https://" + ps_node_url + "/esmond/perfsonar/archive/?event-type=packet-trace&time-range=1200"
+    ps_url = "https://" + ps_node_url + "/esmond/perfsonar/archive/?event-type=packet-trace&time-range=2400"
     traceroute_tests = json_loader_saver.retrieve_json_from_url(ps_url)
 
     data_dict = {}
@@ -56,8 +56,8 @@ def acquire_traceroute_tests(ps_node_url, test_time_range=2400):
 
 def latest_route_analysis(traceroute_test_data, traceroute_matrix, rdns_query):
     """
-    
-    :param traceroute_test_data: 
+    Performs the current and historical analysis 
+    :param traceroute_test_data: traceroute results
     :param traceroute_matrix: 
     :param rdns_query: 
     :return: 
