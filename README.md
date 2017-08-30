@@ -21,11 +21,11 @@ psTrace is a traceroute analysis tool written in PythonV3 which retrieves tracer
         git clone https://github.com/spgreen/psTrace.git
              
 2. Soft link the `html` folder to the web document root that will be served by Apache. 
-   <br>e.g. /var/www/html/ is the usual default directory served by Apache. **Note**: You will need to remove the html folder if it exist otherwise an error will occur when trying to soft link
+   <br>e.g. /var/www/html/ is the usual default directory served by Apache. <br>**Note**: You will need to remove the html folder if it exist otherwise an error will occur creating the soft link
    
         ln -s /full/path/to/pstrace/html/folder/ /var/www/html
     
-3. Edit email constant values within `conf/email_configuration.py` to approriate values within your environment. Currently only supports sending emails to a SMTP server that does not require authentication. 
+3. Edit email constant values within `conf/email_configuration.py` to values appropriate to your environment. Currently only supports sending emails to a SMTP server that does not require authentication. 
 
 4. Run psTrace Tool
 
