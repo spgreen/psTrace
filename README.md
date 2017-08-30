@@ -29,11 +29,11 @@ psTrace is a traceroute analysis tool written in PythonV3 which retrieves tracer
 
 4. Run psTrace Tool
 
-       python perfsonar_traceroute_analysis.py <PS MA base URL or IP> <period in seconds>
+       $ python perfsonar_traceroute_analysis.py <PS MA base URL or IP> <period in seconds>
   
   or
   
-       python3 perfsonar_traceroute_analysis.py <PS MA base URL or IP> <period in seconds>
+       $ python3 perfsonar_traceroute_analysis.py <PS MA base URL or IP> <period in seconds>
        
   depending on your system
   
