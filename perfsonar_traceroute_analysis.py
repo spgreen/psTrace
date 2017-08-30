@@ -12,9 +12,11 @@ from classes import RouteComparison
 from classes import Traceroute
 from lib import json_loader_saver
 
-HTML_DIR = "html"
-JSON_DIR = "json"
-TEMPLATE_DIR = "html_templates"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+HTML_DIR = os.path.join(BASE_DIR, "html")
+JSON_DIR = os.path.join(BASE_DIR, "json")
+TEMPLATE_DIR = os.path.join(BASE_DIR, "html_templates")
 
 # HTML Folder
 FORCE_GRAPH_DATA_FP = os.path.join(HTML_DIR, "traceroute_force_graph.json")
