@@ -1,19 +1,16 @@
 #!/usr/bin/python3
-import sys
-import datetime
-import urllib.parse
 import argparse
+import datetime
 import os
+import sys
+import urllib.parse
 
-from classes import Matrix
 from classes import ForceGraph
+from classes import Matrix
 from classes import ReverseDNS
 from classes import RouteComparison
 from classes import Traceroute
 from lib import json_loader_saver
-
-EMAIL_TO = ["root@localhost"]
-EMAIL_FROM = "pstrace@localhost"
 
 HTML_DIR = "html"
 JSON_DIR = "json"
@@ -151,8 +148,7 @@ def main(perfsonar_ma_url, time_period):
         route_compare(source_domain, destination_domain, route)
 
     if route_comparison.email_contents:
-        print("Notification email sent to %s" % ", ".join(EMAIL_TO))
-        route_comparison.send_email_alert(EMAIL_TO, EMAIL_FROM, J2_EMAIL_TEMPLATE_FP)
+        route_comparison.send_email_alert(J2_EMAIL_TEMPLATE_FP)
 
     with open(DASHBOARD_WEB_PAGE_FP, "w") as web_matrix_file:
         current_time = datetime.datetime.now().strftime("%c")

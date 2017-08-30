@@ -1,6 +1,7 @@
 import copy
 from lib import jinja_renderer
 from lib import email
+from email_configuration import EMAIL_TO, EMAIL_FROM, EMAIL_SUBJECT, EMAIL_SERVER
 
 
 class RouteComparison:
@@ -88,11 +89,11 @@ class RouteComparison:
         html.append("</table>")
         return html
 
-    def send_email_alert(self, email_to, email_from, jinja_template_fp):
+    def send_email_alert(self, jinja_template_fp):
         """
         Sends an email message to recipients regarding the routes that have changed
 
-        Email example if using html_templates/matrix.html.j2:
+        Email example if using html_templates/email.html.j2:
             Dear Network Admin,
 
             The following routes have changed:
@@ -110,17 +111,13 @@ class RouteComparison:
 
             Kind regards,
             psTrace
-
-        :param email_to: E-mail addresses of the receivers
-        :type email_to: list
-        :param email_from: E-mail address of the sender
-        :type email_from: str
+            
         :param jinja_template_fp: File path of the template file
         :type jinja_template_fp: str
         :return: None
         """
-        subject = "Trace Route Change"
         email_body = "".join(self.email_contents)
-        message = jinja_renderer.render_template_output(template_fp=jinja_template_fp,
-                                                        route_changes=email_body)
-        email.send_mail(email_to, email_from, subject, message)
+        email_message = jinja_renderer.render_template_output(template_fp=jinja_template_fp,
+                                                              route_changes=email_body)
+        email.send_mail(EMAIL_TO, EMAIL_FROM, EMAIL_SUBJECT, email_message, EMAIL_SERVER)
+        print("Notification email sent to %s" % ", ".join(EMAIL_TO))
