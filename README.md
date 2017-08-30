@@ -41,9 +41,9 @@ psTrace is a traceroute analysis tool written in PythonV3 which retrieves tracer
      
   - **``<period in seconds>``** - e.g. 86400 = 1 day, 1290600 = 2 weeks, etc 
   
-4. Results will be stored as HTML pages within the psTrace `html` folder
+5. Results will be stored as HTML pages within the psTrace `html` folder
 
-5. Access results by using a web browser and type the address of the web server hosting the results. 
+6. Access results by using a web browser and type the address of the web server hosting the results. 
 
 ## Schedule automatic psTrace analysis using Cron
 
