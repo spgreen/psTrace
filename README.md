@@ -11,7 +11,7 @@ psTrace is a traceroute analysis tool written in PythonV3 which retrieves tracer
       pip install Jinja2
 
 - Web Server (Apache, Nginx, etc)
-- Postfix for sending out email alerts
+- SMTP Server (Postfix, etc) that does not require authentication for sending out email alerts 
 - Accesss to a PerfSONAR Measurement Archive with traceroute/tracepath data
 
 ## Using the psTrace Analysis Tool
@@ -20,12 +20,12 @@ psTrace is a traceroute analysis tool written in PythonV3 which retrieves tracer
 
         git clone https://github.com/spgreen/psTrace.git
              
-2. Soft link the `html` folder to the web document root that will be served by Apache. 
+2. Soft link the psTrace `html` folder to the web document root that will be served by Apache. 
    <br>e.g. /var/www/html/ is the usual default directory served by Apache. <br>**Note**: You will need to remove the html folder if it exist otherwise an error will occur creating the soft link
    
         ln -s /full/path/to/pstrace/html/folder/ /var/www/html
     
-3. Edit email constant values within `conf/email_configuration.py` to values appropriate to your environment. Currently only supports sending emails to a SMTP server that does not require authentication. 
+3. Edit the email constants within `conf/email_configuration.py` to values appropriate to your environment. Currently only supports sending emails to a SMTP server that does NOT require authentication. 
 
 4. Run psTrace Tool
 
@@ -57,4 +57,4 @@ psTrace is a traceroute analysis tool written in PythonV3 which retrieves tracer
   1. **``<PS MA base URL or IP>``** - either the IP address or base url without http:// or https:// of the perfSONAR Measurement archive you wish to retrieve traceroute/tracepath data from.
   2. **``<period in seconds>``** - e.g. 86400 = 1 day, 1290600 = 2 weeks, etc 
 
-This will run the perfsonar_traceroute_analysis.py script every 30 minutes
+This will run the perfsonar_traceroute_analysis.py script every 30 minutes. Change the time appropriately for your environment e.g. for SingAREN's case traceroute tests run every 15 minutes so setting the cron script to every 30 minutes is sufficient.
