@@ -10,8 +10,9 @@ psTrace is a traceroute analysis tool written in PythonV3 which retrieves tracer
 
       pip install Jinja2
 
-- Apache Web Server 
+- Web Server (Apache, Nginx, etc)
 - Postfix for sending out email alerts
+- Accesss to a PerfSONAR Measurement Archive with traceroute/tracepath data
 
 ## Using the psTrace Analysis Tool
 
@@ -28,18 +29,32 @@ psTrace is a traceroute analysis tool written in PythonV3 which retrieves tracer
 
 4. Run psTrace Tool
 
-        python perfsonar_traceroute_analysis.py <base perfSONAR MA URL> <time period in seconds>
+       python perfsonar_traceroute_analysis.py <PS MA base URL or IP> <period in seconds>
   
   or
   
-       python3 perfsonar_traceroute_analysis.py <base perfSONAR MA URL> <time period in seconds>
+       python3 perfsonar_traceroute_analysis.py <PS MA base URL or IP> <period in seconds>
        
   depending on your system
   
-  1. ``<base perfSONAR MA URL>`` is either the IP address or base url without http:// or https:// of the MA
-  2. ``<time period in seconds>`` - e.g. 86400 = 1 day, 1290600 = 2 weeks, etc 
+  1. **``<PS MA base URL or IP>``** is either the IP address or base url without http:// or https:// of the perfSONAR Measurement archive you wish to retrieve traceroute/tracepath data from.
+  2. **``<period in seconds>``** - e.g. 86400 = 1 day, 1290600 = 2 weeks, etc 
   
 4. Results will be stored as HTML pages within the `html` folder
 
+5. Access results by using a web browser and type the address of the web server hosting the results. 
 
-TODO:// Finish Documentation
+## Schedule automatic psTrace analysis using Cron
+
+- Setup a cron script
+
+        $ crontab -e
+
+- Add the following within said cron script:
+        
+        */30 * * * * /path/to/psTrace/perfsonar_traceroute_analysis.py  <PS MA base URL or IP> <period in seconds> 2>&1 >/dev/null
+
+  1. **``<PS MA base URL or IP>``** - either the IP address or base url without http:// or https:// of the perfSONAR Measurement archive you wish to retrieve traceroute/tracepath data from.
+  2. **``<period in seconds>``** - e.g. 86400 = 1 day, 1290600 = 2 weeks, etc 
+
+This will run the perfsonar_traceroute_analysis.py script every 30 minutes
