@@ -27,6 +27,10 @@ psTrace is a traceroute analysis tool written in PythonV3 which retrieves tracer
     
 3. Edit the email constants within `conf/email_configuration.py` to values appropriate to your environment. Currently only supports sending emails to a SMTP server that does NOT require authentication. 
 
+    1. Set `ENABLE_EMAIL_ALERTS = 1` to enable alerts when traceroute changes occur. **Default:** `ENABLE_EMAIL_ALERTS = 0`
+    2. Multiple recipients can be added by modifying `EMAIL_TO` with one address after the other separated by a comma within the square brackets.
+    3. `EMAIL_SERVER` is the SMTP Server that will be used to send out the email alerts. **Default:** `EMAIL_SERVER = localhost`
+    
 4. Run psTrace Tool
 
        $ python perfsonar_traceroute_analysis.py <PS MA base URL or IP> <period in seconds>
@@ -58,4 +62,5 @@ psTrace is a traceroute analysis tool written in PythonV3 which retrieves tracer
   1. **``<PS MA base URL or IP>``** - either the IP address or base url without http:// or https:// of the perfSONAR Measurement archive you wish to retrieve traceroute/tracepath data from.
   2. **``<period in seconds>``** - e.g. 86400 = analysis for last 1 day, 1290600 = analysis for last 2 weeks, etc 
 
-This will run the perfsonar_traceroute_analysis.py script every 30 minutes. Change the time appropriately for your environment <br>e.g. For SingAREN's case, their PerfSONAR Node runs traceroute tests every 15 minutes so setting the cron script to run the analysis tool every 30 minutes is sufficient.
+This will run the perfsonar_traceroute_analysis.py script every 30 minutes. Change the time appropriately for your environment 
+<br>e.g. For SingAREN's case, their PerfSONAR Node runs traceroute tests every 15 minutes so setting the cron script to run the analysis tool every 30 minutes is sufficient.

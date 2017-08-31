@@ -11,6 +11,7 @@ from classes import ReverseDNS
 from classes import RouteComparison
 from classes import Traceroute
 from lib import json_loader_saver
+from conf.email_configuration import ENABLE_EMAIL_ALERTS
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -149,7 +150,7 @@ def main(perfsonar_ma_url, time_period):
         # Compares current route with previous and stores current route in PREVIOUS_ROUTE_FP
         route_compare(source_domain, destination_domain, route)
 
-    if route_comparison.email_contents:
+    if ENABLE_EMAIL_ALERTS and route_comparison.email_contents:
         route_comparison.send_email_alert(J2_EMAIL_TEMPLATE_FP)
 
     with open(DASHBOARD_WEB_PAGE_FP, "w") as web_matrix_file:
