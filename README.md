@@ -34,9 +34,9 @@ psTrace is a traceroute analysis tool written in PythonV3 which retrieves tracer
     
 3. Edit the email constants within `conf/email_configuration.py` to values appropriate to your environment. Currently only supports sending emails to a SMTP server that does NOT require authentication. 
 
-    1. Set `ENABLE_EMAIL_ALERTS = 1` to enable alerts when traceroute changes occur. **Default:** `ENABLE_EMAIL_ALERTS = 0`
+    1. Set `ENABLE_EMAIL_ALERTS = 1` to enable alerts when traceroute changes occur. <br>**Default:** `ENABLE_EMAIL_ALERTS = 0`
     2. Multiple recipients can be added by modifying `EMAIL_TO` with one address after the other separated by a comma within the square brackets.
-    3. `EMAIL_SERVER` is the SMTP Server that will be used to send out the email alerts. **Default:** `EMAIL_SERVER = localhost`
+    3. `EMAIL_SERVER` is the SMTP Server that will be used to send out the email alerts. <br>**Default:** `EMAIL_SERVER = localhost`
     
 4. Run psTrace Tool
 
