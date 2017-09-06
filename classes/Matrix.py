@@ -28,9 +28,10 @@ class Matrix:
         :return: sorted matrix dictionary
         """
         # Retrieves all endpoint ip addresses from the the PerfSONAR MA metadata
-        source_ip_addresses = list({route_test['source'] for route_test in test_metadata.values()})
-        self.endpoints = list({route_test['destination'] for route_test in test_metadata.values()})
-        self.endpoints.extend(source_ip_addresses)
+        source_ip_addresses = list({route_test['source'] for route_test in test_metadata})
+        test_endpoints = list({route_test['destination'] for route_test in test_metadata})
+        test_endpoints.extend(source_ip_addresses)
+        self.endpoints = list(set(test_endpoints))
         self.endpoints.sort()
 
         # Creates the destination information dict for all matrix sources to all destinations.
@@ -90,7 +91,6 @@ class Matrix:
 
         append_table_header = table_header.append
         append_table_contents = table_contents.append
-
         # Creates the HTML table header
         for endpoint in self.endpoints:
             append_table_header("<td><div><span>%s</span></div></td>" % rdns_query(endpoint))

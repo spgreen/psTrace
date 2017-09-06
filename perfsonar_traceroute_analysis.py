@@ -45,16 +45,15 @@ def acquire_traceroute_tests(ps_node_url, test_time_range=2400):
     ps_url = "https://%s/esmond/perfsonar/archive/?event-type=packet-trace&time-range=%s" % (ps_node_url, TESTING_PERIOD)
     traceroute_tests = json_loader_saver.retrieve_json_from_url(ps_url)
 
-    data_dict = {}
+    data_list = []
     for singular_test in traceroute_tests:
-        input_destination = singular_test['input-destination']
-        if input_destination not in data_dict:
             url = urllib.parse.urlsplit(singular_test['url'], scheme="https")
             api_key = "https://" + url.netloc + url.path + "packet-trace/base?time-range=" + str(test_time_range)
-            data_dict[input_destination] = {'api': api_key,
-                                            'source': singular_test['source'],
-                                            'destination': singular_test["destination"]}
-    return data_dict
+            data_list.append({'api': api_key,
+                              'source': singular_test['source'],
+                              'destination': singular_test["destination"]})
+
+    return data_list
 
 
 def latest_route_analysis(traceroute_test_data, traceroute_matrix, rdns_query):
@@ -126,7 +125,7 @@ def main(perfsonar_ma_url, time_period):
     print("Matrix Created")
 
     # Computes the trace route data for all tests found within the perfSONAR MA
-    for traceroute in traceroute_metadata.values():
+    for traceroute in traceroute_metadata:
         try:
             route_stats = latest_route_analysis(traceroute, traceroute_matrix, rdns_query)
         except urllib.error.HTTPError:
