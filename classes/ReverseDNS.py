@@ -26,7 +26,7 @@ class ReverseDNS:
                 ipaddress.ip_address(ip_address)
                 ip_store.append(self.rdns_store[ip_address])
             except ValueError:
-                print("Error: %s not a valid IP Address" % ip_address)
+                #print("Error: %s not a valid IP Address" % ip_address)
                 ip_store.append(ip_address)
             except KeyError:
                 self.rdns_store[ip_address] = self.__query_from_dns(ip_address)

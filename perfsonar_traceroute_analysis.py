@@ -13,6 +13,8 @@ from classes import Traceroute
 from lib import json_loader_saver
 from conf.email_configuration import ENABLE_EMAIL_ALERTS
 
+TESTING_PERIOD = 1860
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 HTML_DIR = os.path.join(BASE_DIR, "html")
@@ -40,7 +42,7 @@ def acquire_traceroute_tests(ps_node_url, test_time_range=2400):
     :param test_time_range: time in seconds
     :return: 
     """
-    ps_url = "https://" + ps_node_url + "/esmond/perfsonar/archive/?event-type=packet-trace&time-range=2400"
+    ps_url = "https://%s/esmond/perfsonar/archive/?event-type=packet-trace&time-range=%s" % (ps_node_url, TESTING_PERIOD)
     traceroute_tests = json_loader_saver.retrieve_json_from_url(ps_url)
 
     data_dict = {}
@@ -68,12 +70,6 @@ def latest_route_analysis(traceroute_test_data, traceroute_matrix, rdns_query):
     source_ip = traceroute.source_ip
     destination_ip = traceroute.destination_ip
 
-    # Checks if test results exist after trying to retrieve traceroute test data from the perfSONAR MA
-    if len(traceroute.trace_route_results) <= 1:
-        print("Error: Only 1 test available!")
-        # TODO: Raise error for single tests
-        return
-
     traceroute.perform_traceroute_analysis()
 
     # Adds domain values to each hop within the traceroute.route_stats dictionary
@@ -87,7 +83,7 @@ def latest_route_analysis(traceroute_test_data, traceroute_matrix, rdns_query):
     # Adds domain name to each route within historical routes
     if historical_routes:
         for historical_route in historical_routes:
-            historical_route.update({"route": rdns_query(*historical_route["route"])})
+            historical_route.update({"layer3_route": rdns_query(*historical_route["layer3_route"])})
 
     fp_html = "{source}-to-{dest}.html".format(source=source_ip, dest=destination_ip)
     # Replaces the colons(:) for IPv6 addresses to full-stops(.) to prevent file path issues when saving files on Win32
@@ -170,7 +166,11 @@ def main(perfsonar_ma_url, time_period):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("perfsonar_base", help="IP or base domain of the PerfSONAR MA")
-    parser.add_argument("time_period", help="Time period (in seconds) from current point in time. e.g. 1 day == 86400",
-                        type=int)
+    parser.add_argument("time_period", help="Time period (in seconds) from current point in time. "
+                                            "e.g. 1 day == 86400", type=int)
     args = parser.parse_args()
+    if args.time_period < TESTING_PERIOD:
+        print("ERROR: Time period (%d seconds) is less than the traceroute testing period (%d seconds)."
+              "\nExiting..." % (args.time_period, TESTING_PERIOD))
+        exit()
     main(args.perfsonar_base, args.time_period)
