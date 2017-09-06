@@ -2,6 +2,13 @@
 
 psTrace is a traceroute analysis tool written in PythonV3 which retrieves traceroute/tracepath data from a PerfSONAR Measurement Archive (MA).
 
+## Features
+
+- Results matrix of all traceroute test 
+- Detailed information for each traceroute test
+- Historical Traceroute information for each traceroute test
+- Email alerts when routes change
+- Results accessed via a web browser as results are stored as HTML files
 
 ## Prerequisites
 
