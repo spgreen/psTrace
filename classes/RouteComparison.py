@@ -1,8 +1,33 @@
 import copy
+import itertools
 
 from conf.email_configuration import EMAIL_TO, EMAIL_FROM, EMAIL_SUBJECT, EMAIL_SERVER
 from lib import email
 from lib import jinja_renderer
+
+
+def threshold_comparison_check(list_a, list_b, threshold):
+    """
+    
+    :param list_a: 
+    :param list_b: 
+    :param threshold: 
+    :return: 
+    """
+    if not (list_a or list_b):
+        raise ValueError
+    if isinstance(list_a, int) or isinstance(list_b, int):
+        raise TypeError
+    if threshold > 1.0:
+        raise ValueError
+
+    combined_list = list(itertools.zip_longest(list_a, list_b))
+    combined_list_length = len(combined_list)
+    number_of_differences = len([i for i, j in combined_list if i == j])
+
+    if number_of_differences/combined_list_length < threshold:
+        return True
+    return False
 
 
 class RouteComparison:
