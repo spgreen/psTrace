@@ -6,7 +6,7 @@ from lib import email
 from lib import jinja_renderer
 
 
-def threshold_comparison_check(list_a, list_b, threshold):
+def comparison_check(list_a, list_b, threshold):
     """
     
     :param list_a: 
@@ -39,9 +39,10 @@ class RouteComparison:
      used for the email message and the email function to send said generated
      HTML email message.
     """
-    def __init__(self):
+    def __init__(self, threshold):
         self.previous_routes = {}
         self.email_contents = []
+        self.threshold = threshold
 
     def compare_and_update(self, src_domain, dest_domain, current_route):
         """
@@ -57,7 +58,7 @@ class RouteComparison:
         :return: None
         """
         try:
-            if threshold_comparison_check(self.previous_routes[src_domain][dest_domain], current_route, 0.5):
+            if comparison_check(self.previous_routes[src_domain][dest_domain], current_route, self.threshold):
                 print("Route Changed")
                 previous_route = self.previous_routes[src_domain][dest_domain]
                 # Update current route into previous_routes dictionary to prevent update by reference

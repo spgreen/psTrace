@@ -16,6 +16,7 @@ from lib import json_loader_saver
 from conf.email_configuration import ENABLE_EMAIL_ALERTS
 
 TESTING_PERIOD = 1860
+THRESHOLD = 0.5
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -112,7 +113,7 @@ def main(perfsonar_ma_url, time_period):
     json_loader_saver.update_dictionary_from_json_file(rdns.rdns_store, REVERSE_DNS_FP)
     rdns_query = rdns.query
 
-    route_comparison = RouteComparison.RouteComparison()
+    route_comparison = RouteComparison.RouteComparison(THRESHOLD)
     # Loads previous route information from a JSON file found at PREVIOUS_ROUTE_FP
     json_loader_saver.update_dictionary_from_json_file(route_comparison.previous_routes, PREVIOUS_ROUTE_FP)
     route_compare = route_comparison.compare_and_update
