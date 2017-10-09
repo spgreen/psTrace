@@ -57,10 +57,10 @@ class RouteComparison:
         :return: None
         """
         try:
-            if self.previous_routes[src_domain][dest_domain] != current_route:
+            if threshold_comparison_check(self.previous_routes[src_domain][dest_domain], current_route, 0.5):
                 print("Route Changed")
                 previous_route = self.previous_routes[src_domain][dest_domain]
-                # Update current route into previous_routes dictionary
+                # Update current route into previous_routes dictionary to prevent update by reference
                 self.previous_routes[src_domain][dest_domain] = copy.copy(current_route)
 
                 # Creates email body for routes that have changed
@@ -95,24 +95,13 @@ class RouteComparison:
         :type current_route: list
         :return html: list
         """
-        current_route_length = len(current_route)
-        previous_route_length = len(previous_route)
-        length_difference = abs(previous_route_length - current_route_length)
-        max_length = previous_route_length
-
         # Adds "*" padding to the shortest route to ensure the current and previous route
         # are of equal length
-        if current_route_length > previous_route_length:
-            max_length = current_route_length
-            previous_route.extend(["*"] * length_difference)
-        elif current_route_length < previous_route_length:
-            current_route.extend(["*"] * length_difference)
-
+        combined_route = itertools.zip_longest(previous_route, current_route, fillvalue="*")
         html = ["<table>\n<tr><th>Hop:</th><th>Previous Route:</th><th>Current Route:</th></tr>"]
-        for i in range(max_length):
-            index, p_hop, c_hop = (i + 1, previous_route[i], current_route[i])
-            html.append("<tr><td>%d</td><td>%s</td><td>%s</td></tr>\n" % (index, p_hop, c_hop))
-        html.append("</table>")
+        for index, route in enumerate(combined_route):
+            html.append("\n<tr><td>%d</td><td>%s</td><td>%s</td></tr>" % (index + 1, route[0], route[1]))
+        html.append("\n</table>")
         return html
 
     def send_email_alert(self, jinja_template_fp):
