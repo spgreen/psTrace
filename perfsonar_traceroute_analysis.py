@@ -5,6 +5,8 @@ import os
 import sys
 import urllib.parse
 
+from urllib.error import HTTPError
+
 from classes import ForceGraph
 from classes import Matrix
 from classes import ReverseDNS
@@ -119,7 +121,7 @@ def main(perfsonar_ma_url, time_period):
     try:
         traceroute_metadata = acquire_traceroute_tests(perfsonar_ma_url, test_time_range=time_period)
         print("%d test(s) received!" % len(traceroute_metadata))
-    except urllib.error.HTTPError:
+    except HTTPError:
         print("Not a valid PerfSONAR Traceroute MA")
         exit()
 
@@ -128,11 +130,11 @@ def main(perfsonar_ma_url, time_period):
     print("Matrix Created")
 
     # Computes the trace route data for all tests found within the perfSONAR MA
-    for traceroute in (traceroute_metadata):
+    for traceroute in traceroute_metadata:
         source, destination = traceroute["source"], traceroute["destination"]
         try:
             route_stats = latest_route_analysis(traceroute, traceroute_matrix, rdns_query)
-        except urllib.error.HTTPError as e:
+        except HTTPError as e:
             print(e, "unable to retrieve traceroute data from %s" % (traceroute["api"]))
             print("Retrieving next test....")
             traceroute_matrix.update_matrix(source=source,
