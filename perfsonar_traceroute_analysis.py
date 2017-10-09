@@ -42,6 +42,9 @@ def acquire_traceroute_tests(ps_node_url, test_time_range=2400):
     :param test_time_range: time in seconds
     :return: 
     """
+    if not isinstance(test_time_range, int):
+        raise ValueError
+
     ps_url = "https://%s/esmond/perfsonar/archive/?event-type=packet-trace&time-range=%s" % (ps_node_url, TESTING_PERIOD)
     traceroute_tests = json_loader_saver.retrieve_json_from_url(ps_url)
 
@@ -125,23 +128,25 @@ def main(perfsonar_ma_url, time_period):
     print("Matrix Created")
 
     # Computes the trace route data for all tests found within the perfSONAR MA
-    for traceroute in traceroute_metadata:
+    for traceroute in (traceroute_metadata):
+        source, destination = traceroute["source"], traceroute["destination"]
         try:
             route_stats = latest_route_analysis(traceroute, traceroute_matrix, rdns_query)
-        except urllib.error.HTTPError:
-            print("Error: Unable to retrieve data. Retrieving next test....")
-            traceroute_matrix.update_matrix(source=traceroute["source"],
-                                            destination=traceroute["destination"],
+        except urllib.error.HTTPError as e:
+            print(e, "unable to retrieve traceroute data from %s" % (traceroute["api"]))
+            print("Retrieving next test....")
+            traceroute_matrix.update_matrix(source=source,
+                                            destination=destination,
                                             rtt=False,
                                             fp_html=False)
             continue
 
-        source_domain, destination_domain = rdns_query(traceroute["source"], traceroute["destination"])
+        source_domain, destination_domain = rdns_query(source, destination)
         # Creates the hop list from the route_stats return
         route = [hop["domain"] for hop in route_stats]
         route_from_source = [source_domain] + route[:-1]
         # Creates force nodes between previous and current hop
-        force_graph.create_force_nodes(route_stats, route_from_source, traceroute["destination"])
+        force_graph.create_force_nodes(route_stats, route_from_source, destination)
         # Compares current route with previous and stores current route in PREVIOUS_ROUTE_FP
         route_compare(source_domain, destination_domain, route)
 
