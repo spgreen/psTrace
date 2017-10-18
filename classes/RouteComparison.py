@@ -23,9 +23,9 @@ def comparison_check(list_a, list_b, threshold):
 
     combined_list = list(itertools.zip_longest(list_a, list_b))
     combined_list_length = len(combined_list)
-    number_of_differences = len([i for i, j in combined_list if i == j])
+    number_of_differences = len([i for i, j in combined_list if i != j])
 
-    if number_of_differences/combined_list_length < threshold:
+    if number_of_differences/combined_list_length > threshold:
         return True
     return False
 

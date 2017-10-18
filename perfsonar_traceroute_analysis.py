@@ -16,7 +16,8 @@ from lib import json_loader_saver
 from conf.email_configuration import ENABLE_EMAIL_ALERTS
 
 TESTING_PERIOD = 1860
-THRESHOLD = 0.5
+# Threshold set between 0.0 to 1.0
+THRESHOLD = 0
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
