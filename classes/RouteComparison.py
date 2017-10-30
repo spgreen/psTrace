@@ -27,7 +27,6 @@ def comparison_check(list_a, list_b, threshold):
 
     if number_of_differences/combined_list_length > threshold:
         return True
-    return False
 
 
 class RouteComparison:
@@ -44,7 +43,7 @@ class RouteComparison:
         self.email_contents = []
         self.threshold = threshold
 
-    def compare_and_update(self, src_domain, dest_domain, current_route):
+    def compare_and_update(self, src_domain, dest_domain, route_stats):
         """
         Compares the current route with routes from when the previous test ran.
         If no previous routes are found, the current route will be appended to the
@@ -53,25 +52,29 @@ class RouteComparison:
         :type src_domain: str
         :param dest_domain: Destination domain name
         :type dest_domain: str
-        :param current_route: Current trace route list
-        :type current_route: list
+        :param route_stats: Current trace route list
+        :type route_stats: list
         :return: None
         """
+        statistics = [{"domain": hop["domain"], "as": hop["as"], "rtt": hop["rtt"]} for hop in route_stats]
         try:
-            if comparison_check(self.previous_routes[src_domain][dest_domain], current_route, self.threshold):
+            previous = (hop["domain"] for hop in self.previous_routes[src_domain][dest_domain])
+            current = (hop["domain"] for hop in route_stats)
+
+            if comparison_check(previous, current, self.threshold):
                 print("Route Changed")
                 previous_route = self.previous_routes[src_domain][dest_domain]
                 # Update current route into previous_routes dictionary to prevent update by reference
-                self.previous_routes[src_domain][dest_domain] = copy.copy(current_route)
+                self.previous_routes[src_domain][dest_domain] = copy.copy(statistics)
 
                 # Creates email body for routes that have changed
                 self.email_contents.extend(["<h3>From %s to %s</h3>" % (src_domain, dest_domain)])
-                self.email_contents.extend(self.__create_email_message(previous_route, current_route))
+                self.email_contents.extend(self.__create_email_message(previous_route, statistics))
         except KeyError:
             try:
-                self.previous_routes[src_domain].update({dest_domain: current_route})
+                self.previous_routes[src_domain].update({dest_domain: statistics})
             except KeyError:
-                self.previous_routes.update({src_domain: {dest_domain: current_route}})
+                self.previous_routes.update({src_domain: {dest_domain: statistics}})
 
     @staticmethod
     def __create_email_message(previous_route, current_route):
@@ -98,10 +101,27 @@ class RouteComparison:
         """
         # Adds "*" padding to the shortest route to ensure the current and previous route
         # are of equal length
-        combined_route = itertools.zip_longest(previous_route, current_route, fillvalue="*")
-        html = ["<table>\n<tr><th>Hop:</th><th>Previous Route:</th><th>Current Route:</th></tr>"]
+        combined_route = itertools.zip_longest(previous_route,
+                                               current_route,
+                                               fillvalue={"domain": "*",
+                                                          "as": "*",
+                                                          "rtt": "*"}
+                                               )
+        html = ["<table>\n<tr>"
+                "<th>Hop:</th>"
+                "<th>Previous Route:</th>"
+                "<th>Previous RTT:</th>"
+                "<th>Current Route:</th>"
+                "<th>Current RTT:</th>"
+                "</tr>"]
         for index, route in enumerate(combined_route):
-            html.append("\n<tr><td>%d</td><td>%s</td><td>%s</td></tr>" % (index + 1, route[0], route[1]))
+            html.append("\n<tr>"
+                        "<td>%d</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td>"
+                        "</tr>" % (index + 1,
+                                   route[0]["domain"],
+                                   route[0]["rtt"],
+                                   route[1]["domain"],
+                                   route[1]["rtt"]))
         html.append("\n</table>")
         return html
 
