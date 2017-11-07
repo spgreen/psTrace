@@ -9,8 +9,7 @@ from urllib.error import HTTPError
 
 from classes import ForceGraph
 from classes import Matrix
-from classes import ReverseDNS
-from classes import RouteComparison
+from classes import DataStore
 from classes import Traceroute
 from lib import json_loader_saver
 from conf.email_configuration import ENABLE_EMAIL_ALERTS
@@ -109,14 +108,14 @@ def main(perfsonar_ma_url, time_period):
     # Force Graph initialisation
     force_graph = ForceGraph.ForceGraph()
 
-    rdns = ReverseDNS.ReverseDNS()
+    rdns = DataStore.ReverseDNS()
     # Loads reverse DNS information from a JSON file found at REVERSE_DNS_FP
-    json_loader_saver.update_dictionary_from_json_file(rdns.rdns_store, REVERSE_DNS_FP)
+    rdns.update_dictionary_from_json_file(REVERSE_DNS_FP)
     rdns_query = rdns.query
 
-    route_comparison = RouteComparison.RouteComparison(THRESHOLD)
+    route_comparison = DataStore.RouteComparison(THRESHOLD)
     # Loads previous route information from a JSON file found at PREVIOUS_ROUTE_FP
-    json_loader_saver.update_dictionary_from_json_file(route_comparison.previous_routes, PREVIOUS_ROUTE_FP)
+    route_comparison.update_dictionary_from_json_file(PREVIOUS_ROUTE_FP)
     route_compare = route_comparison.compare_and_update
 
     print("Acquiring traceroute tests... ", end="")
@@ -163,8 +162,8 @@ def main(perfsonar_ma_url, time_period):
 
     # Dictionary + file path for force_graph, rdns and route_comparison
     dicts_to_save = ((force_graph.retrieve_graph(), FORCE_GRAPH_DATA_FP),
-                     (rdns.rdns_store, REVERSE_DNS_FP),
-                     (route_comparison.previous_routes, PREVIOUS_ROUTE_FP))
+                     (rdns.dictionary_store, REVERSE_DNS_FP),
+                     (route_comparison.dictionary_store, PREVIOUS_ROUTE_FP))
 
     for contents, file_path in dicts_to_save:
         json_loader_saver.save_dictionary_as_json_file(contents, file_path)

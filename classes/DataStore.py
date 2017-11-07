@@ -1,5 +1,8 @@
 import copy
+import ipaddress
 import itertools
+import json
+import socket
 
 from conf.email_configuration import EMAIL_TO, EMAIL_FROM, EMAIL_SUBJECT, EMAIL_SERVER
 from lib import email
@@ -29,7 +32,27 @@ def comparison_check(list_a, list_b, threshold):
         return True
 
 
-class RouteComparison:
+class DictionaryDataStore:
+
+    def __init__(self):
+        self.dictionary_store = {}
+
+    def update_dictionary_from_json_file(self, file_path):
+        """
+        Updates dictionary with from a JSON file
+        :param file_path: file path of the JSON file to load
+        :return: 
+        """
+        try:
+            with open(file_path, "r") as file:
+                self.dictionary_store.update(json.load(fp=file))
+        except FileNotFoundError:
+            print("File %s not found!" % file_path)
+        except ValueError:
+            print("Error: Unable to update due to different dictionary_contents length")
+
+
+class RouteComparison(DictionaryDataStore):
     """
     Used for comparing two traceroute tests. If current route is different
      to the previous test, the new route will be saved and a HTML body
@@ -39,7 +62,7 @@ class RouteComparison:
      HTML email message.
     """
     def __init__(self, threshold):
-        self.previous_routes = {}
+        DictionaryDataStore.__init__(self)
         self.email_contents = []
         self.threshold = threshold
 
@@ -47,7 +70,7 @@ class RouteComparison:
         """
         Compares the current route with routes from when the previous test ran.
         If no previous routes are found, the current route will be appended to the
-        previous_routes dictionary
+        dictionary_store dictionary
         :param src_domain: Source domain name
         :type src_domain: str
         :param dest_domain: Destination domain name
@@ -58,23 +81,23 @@ class RouteComparison:
         """
         statistics = [{"domain": hop["domain"], "as": hop["as"], "rtt": hop["rtt"]} for hop in route_stats]
         try:
-            previous = (hop["domain"] for hop in self.previous_routes[src_domain][dest_domain])
+            previous = (hop["domain"] for hop in self.dictionary_store[src_domain][dest_domain])
             current = (hop["domain"] for hop in route_stats)
 
             if comparison_check(previous, current, self.threshold):
                 print("Route Changed")
-                previous_route = self.previous_routes[src_domain][dest_domain]
-                # Update current route into previous_routes dictionary to prevent update by reference
-                self.previous_routes[src_domain][dest_domain] = copy.copy(statistics)
+                previous_route = self.dictionary_store[src_domain][dest_domain]
+                # Update current route into dictionary_store dictionary to prevent update by reference
+                self.dictionary_store[src_domain][dest_domain] = copy.copy(statistics)
 
                 # Creates email body for routes that have changed
                 self.email_contents.extend(["<h3>From %s to %s</h3>" % (src_domain, dest_domain)])
                 self.email_contents.extend(self.__create_email_message(previous_route, statistics))
         except KeyError:
             try:
-                self.previous_routes[src_domain].update({dest_domain: statistics})
+                self.dictionary_store[src_domain].update({dest_domain: statistics})
             except KeyError:
-                self.previous_routes.update({src_domain: {dest_domain: statistics}})
+                self.dictionary_store.update({src_domain: {dest_domain: statistics}})
 
     @staticmethod
     def __create_email_message(previous_route, current_route):
@@ -157,3 +180,52 @@ class RouteComparison:
                                                               route_changes=email_body)
         email.send_mail(EMAIL_TO, EMAIL_FROM, EMAIL_SUBJECT, email_message, EMAIL_SERVER)
         print("Notification email sent to %s" % ", ".join(EMAIL_TO))
+
+
+class ReverseDNS(DictionaryDataStore):
+    """
+    Performs reverse DNS Lookups on valid IP addresses and stores the IP address
+    and its domain name within the data store. If the IP address has no domain name,
+    the IP address will be stored with itself. Assumption is if an IP address does not
+    have a domain, then it will be unlikely that it will in the future.
+    """
+    def __init__(self):
+        DictionaryDataStore.__init__(self)
+
+    def query(self, *ip_addresses):
+        """
+        Performs a reverse DNS lookup on IP addresses by first looking through the
+        dictionary_store dictionary. If nothing is found within the said dictionary it will perform 
+        a query the DNS server.
+        :param ip_addresses: IP Address to be queried
+        :return: list; domain names of said IP addresses
+        """
+        ip_store = []
+        for ip_address in ip_addresses:
+            try:
+                ipaddress.ip_address(ip_address)
+                ip_store.append(self.dictionary_store[ip_address])
+            except ValueError:
+                #print("Error: %s not a valid IP Address" % ip_address)
+                ip_store.append(ip_address)
+            except KeyError:
+                self.dictionary_store[ip_address] = self.__query_from_dns(ip_address)
+                ip_store.append(self.dictionary_store[ip_address])
+        if len(ip_store) == 1:
+            return ip_store[0]
+        return ip_store
+
+    @staticmethod
+    def __query_from_dns(ip_address):
+        """
+        Queries the local DNS server for the domain name of the IP address
+        :param ip_address: IP Address to be queried
+        :return: Domain name or IP address depending if the lookup was successful
+        """
+        try:
+            return socket.gethostbyaddr(ip_address)[0]
+        except socket.gaierror:
+            return ip_address
+        except socket.herror:
+            print("Unknown Host: %s" % ip_address)
+            return ip_address
