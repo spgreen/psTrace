@@ -7,10 +7,7 @@ import urllib.parse
 
 from urllib.error import HTTPError
 
-from classes import ForceGraph
-from classes import Matrix
-from classes import DataStore
-from classes import Traceroute
+import classes.PsTrace
 from lib import json_loader_saver
 from conf.email_configuration import ENABLE_EMAIL_ALERTS
 
@@ -70,7 +67,7 @@ def latest_route_analysis(traceroute_test_data, traceroute_matrix, rdns_query):
     :param rdns_query: 
     :return: 
     """
-    traceroute = Traceroute.Traceroute(traceroute_test_data)
+    traceroute = classes.PsTrace.Traceroute(traceroute_test_data, J2_TRACEROUTE_WEB_PAGE_FP)
 
     source_ip = traceroute.source_ip
     destination_ip = traceroute.destination_ip
@@ -95,7 +92,7 @@ def latest_route_analysis(traceroute_test_data, traceroute_matrix, rdns_query):
     if sys.platform == "win32":
         fp_html = fp_html.replace(":", ".")
     with open(os.path.join(HTML_DIR, fp_html), "w") as html_file:
-        html_file.write(traceroute.create_traceroute_web_page(historical_routes, J2_TRACEROUTE_WEB_PAGE_FP))
+        html_file.write(traceroute.create_traceroute_web_page(historical_routes))
 
     traceroute_rtt = traceroute.route_stats[-1]["rtt"]
     traceroute_matrix.update_matrix(source=source_ip, destination=destination_ip, rtt=traceroute_rtt, fp_html=fp_html)
@@ -106,28 +103,29 @@ def latest_route_analysis(traceroute_test_data, traceroute_matrix, rdns_query):
 def main(perfsonar_ma_url, time_period):
     traceroute_metadata = ''
     # Force Graph initialisation
-    force_graph = ForceGraph.ForceGraph()
+    force_graph = classes.PsTrace.ForceGraph()
 
-    rdns = DataStore.ReverseDNS()
+    rdns = classes.PsTrace.ReverseDNS()
     # Loads reverse DNS information from a JSON file found at REVERSE_DNS_FP
-    rdns.update_dictionary_from_json_file(REVERSE_DNS_FP)
+    rdns.update_from_json_file(REVERSE_DNS_FP)
     rdns_query = rdns.query
 
-    route_comparison = DataStore.RouteComparison(THRESHOLD)
+    route_comparison = classes.PsTrace.RouteComparison(THRESHOLD, J2_EMAIL_TEMPLATE_FP)
     # Loads previous route information from a JSON file found at PREVIOUS_ROUTE_FP
-    route_comparison.update_dictionary_from_json_file(PREVIOUS_ROUTE_FP)
+    route_comparison.update_from_json_file(PREVIOUS_ROUTE_FP)
     route_compare = route_comparison.compare_and_update
 
     print("Acquiring traceroute tests... ", end="")
+
     try:
         traceroute_metadata = acquire_traceroute_tests(perfsonar_ma_url, test_time_range=time_period)
         print("%d test(s) received!" % len(traceroute_metadata))
-    except HTTPError:
-        print("Not a valid PerfSONAR Traceroute MA")
+    except HTTPError as e:
+        print("%s - Unable to retrieve perfSONAR traceroute data from %s" % (e, perfsonar_ma_url))
         exit()
 
     print("Creating Matrix.... ", end="")
-    traceroute_matrix = Matrix.Matrix(traceroute_metadata)
+    traceroute_matrix = classes.PsTrace.Matrix(traceroute_metadata, J2_MATRIX_WEB_PAGE_FP)
     print("Matrix Created")
 
     # Computes the trace route data for all tests found within the perfSONAR MA
@@ -153,20 +151,20 @@ def main(perfsonar_ma_url, time_period):
         route_compare(source_domain, destination_domain, route_stats)
 
     if ENABLE_EMAIL_ALERTS and route_comparison.email_contents:
-        route_comparison.send_email_alert(J2_EMAIL_TEMPLATE_FP)
+        route_comparison.send_email_alert()
 
     with open(DASHBOARD_WEB_PAGE_FP, "w") as web_matrix_file:
         current_time = datetime.datetime.now().strftime("%c")
-        web_matrix = traceroute_matrix.create_matrix_web_page(current_time, rdns_query, J2_MATRIX_WEB_PAGE_FP)
+        web_matrix = traceroute_matrix.create_matrix_web_page(current_time, rdns_query)
         web_matrix_file.write(web_matrix)
 
-    # Dictionary + file path for force_graph, rdns and route_comparison
-    dicts_to_save = ((force_graph.retrieve_graph(), FORCE_GRAPH_DATA_FP),
-                     (rdns.dictionary_store, REVERSE_DNS_FP),
-                     (route_comparison.dictionary_store, PREVIOUS_ROUTE_FP))
+    # Dictionary + file path for data_store, rdns and route_comparison
+    data_to_save = ((force_graph, FORCE_GRAPH_DATA_FP),
+                     (rdns, REVERSE_DNS_FP),
+                     (route_comparison, PREVIOUS_ROUTE_FP))
 
-    for contents, file_path in dicts_to_save:
-        json_loader_saver.save_dictionary_as_json_file(contents, file_path)
+    for objects, file_path in data_to_save:
+        objects.save_as_json_file(file_path)
 
 
 if __name__ == '__main__':
