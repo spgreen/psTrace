@@ -148,7 +148,7 @@ def main(perfsonar_ma_url, time_period):
         # Creates force nodes between previous and current hop
         force_graph.create_force_nodes(route_stats, route_from_source, destination)
         # Compares current route with previous and stores current route in PREVIOUS_ROUTE_FP
-        route_compare(source_domain, destination_domain, route_stats)
+        route_compare(src_ip=source, dest_ip=destination, route_stats=route_stats)
 
     if ENABLE_EMAIL_ALERTS and route_comparison.email_contents:
         route_comparison.send_email_alert()

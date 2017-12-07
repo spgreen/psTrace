@@ -94,39 +94,38 @@ class RouteComparison(DataStore, Jinja2Template):
         self.email_contents = []
         self.threshold = threshold
 
-    def compare_and_update(self, src_domain, dest_domain, route_stats):
+    def compare_and_update(self, src_ip, dest_ip, route_stats):
         """
         Compares the current route with routes from when the previous test ran.
         If no previous routes are found, the current route will be appended to the
         data_store dictionary
-        :param src_domain: Source domain name
-        :type src_domain: str
-        :param dest_domain: Destination domain name
-        :type dest_domain: str
+        :param src_ip: Source IP address
+        :type src_ip: str
+        :param dest_ip: Destination IP address
+        :type dest_ip: str
         :param route_stats: Current trace route list
         :type route_stats: list
         :return: None
         """
-
         stats = [{"domain": hop["domain"], "as": hop["as"], "rtt": hop["rtt"]} for hop in route_stats]
         try:
-            previous = (hop["domain"] for hop in self.data_store[src_domain][dest_domain])
+            previous = (hop["domain"] for hop in self.data_store[src_ip][dest_ip])
             current = (hop["domain"] for hop in route_stats)
 
             if self.comparison_check(previous, current):
                 print("Route Changed")
-                previous_route = self.data_store[src_domain][dest_domain]
+                previous_route = self.data_store[src_ip][dest_ip]
                 # Update current route into data_store dictionary to prevent update by reference
-                self.data_store[src_domain][dest_domain] = copy.copy(stats)
+                self.data_store[src_ip][dest_ip] = copy.copy(stats)
 
                 # Creates email body for routes that have changed
-                self.email_contents.extend(["<h3>From %s to %s</h3>" % (src_domain, dest_domain)])
+                self.email_contents.extend(["<h3>From %s to %s</h3>" % (src_ip, dest_ip)])
                 self.email_contents.extend(self.__create_email_message(previous_route, stats))
         except KeyError:
             try:
-                self.data_store[src_domain].update({dest_domain: stats})
+                self.data_store[src_ip].update({dest_ip: stats})
             except KeyError:
-                self.data_store.update({src_domain: {dest_domain: stats}})
+                self.data_store.update({src_ip: {dest_ip: stats}})
 
     def comparison_check(self, list_a, list_b):
         """
