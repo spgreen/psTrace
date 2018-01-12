@@ -109,8 +109,8 @@ class RouteComparison(DataStore, Jinja2Template):
         """
         stats = [{"domain": hop["domain"], "as": hop["as"], "rtt": hop["rtt"]} for hop in route_stats]
         try:
-            previous = (hop["domain"] for hop in self.data_store[src_ip][dest_ip])
-            current = (hop["domain"] for hop in route_stats)
+            previous = [hop["domain"] for hop in self.data_store[src_ip][dest_ip]]
+            current = [hop["domain"] for hop in route_stats]
 
             if self.comparison_check(previous, current):
                 print("Route Changed")
@@ -129,6 +129,8 @@ class RouteComparison(DataStore, Jinja2Template):
 
     def comparison_check(self, list_a, list_b):
         """
+        Performs a comparison check between two lists. It also checks for false positives when one route
+        reaches all but the end node
         :param list_a:
         :param list_b:
         :return:
@@ -139,6 +141,23 @@ class RouteComparison(DataStore, Jinja2Template):
             raise TypeError
         if self.threshold > 1.0:
             raise ValueError
+
+        different_lengths = True
+
+        lengths = [len(list_a), len(list_b)]
+        end_route_slice = slice(min(lengths) - 1, max(lengths))
+        proposed_null_length = end_route_slice.stop - end_route_slice.start
+
+        if len(list_a) < len(list_b):
+            list_a, list_b = list_b, list_a
+        elif len(list_a) == len(list_b):
+            different_lengths = False
+
+        if different_lengths:
+            no_of_null_hops = len([hop for hop in list_a[end_route_slice] if not hop])
+            if proposed_null_length is no_of_null_hops:
+                list_a = list_a[:min(lengths)]
+                print(list_a)
 
         combined_list = list(itertools.zip_longest(list_a, list_b))
         combined_list_length = len(combined_list)
@@ -285,7 +304,6 @@ class Matrix(Jinja2Template):
     def __init__(self, test_metadata, jinja_template_file_path):
         """
         :param test_metadata: Metadata of all traceroute/path tests found within a PerfSOANR MA
-        :type test_metadata: dict
         """
         Jinja2Template.__init__(self, jinja_template_file_path)
         self.endpoints = None
@@ -405,6 +423,11 @@ class Traceroute(Jinja2Template):
                 for (index, hop) in enumerate(route_test["val"])]
 
     @staticmethod
+    def __generate_domain_list(route_test):
+        return [hop.get('hostname') if hop.get('hostname') else hop.get('ip')
+                for hop in route_test["val"]]
+
+    @staticmethod
     def __retrieve_asn(ps_hop_dictionary):
         """
         Retrieves Autonomous System Numbers from a PerfSONAR hop details dictionary.
@@ -505,6 +528,7 @@ class Traceroute(Jinja2Template):
         """
         # Retrieves latest route from self.trace_route_results
         hop_ip_list = self.__generate_hop_list(self.latest_trace_route)
+        hop_domain_list = self.__generate_domain_list(self.latest_trace_route)
 
         for (hop_index, current_hop_ip) in enumerate(hop_ip_list):
             # Goes through every test comparing the IP occurring at the same hop_index of the latest trace route
@@ -518,7 +542,7 @@ class Traceroute(Jinja2Template):
 
             if len(rtt) > 1 and rtt:
                 # rounds all hop_details to 2 d.p.s
-                hop_details = {key: round(hop_details[key], 2)for key in hop_details}
+                hop_details = {key: round(hop_details.get(key), 2)for key in hop_details}
                 status = "warn" if hop_details["rtt"] > hop_details["threshold"] else "okay"
             elif len(rtt) == 1 and rtt:
                 status = "unknown"
@@ -528,6 +552,7 @@ class Traceroute(Jinja2Template):
 
             hop_details["status"] = status
             hop_details["ip"] = current_hop_ip
+            hop_details["domain"] = hop_domain_list[hop_index]
             hop_details["as"] = self.__retrieve_asn(self.latest_trace_route["val"][hop_index])
 
             self.route_stats.append(hop_details)
@@ -551,7 +576,7 @@ class Traceroute(Jinja2Template):
         # Retrieves all of the different routes that occurred during the data period and stores the routes within the
         # historical_routes list
         for i in sorted_diff_route_index:
-            route = self.__generate_hop_list(self.trace_route_results[i])
+            route = self.__generate_domain_list(self.trace_route_results[i])
             asn = [self.__retrieve_asn(hop) for hop in self.trace_route_results[i]["val"]]
 
             if (i+1 not in sorted_diff_route_index) or (previous_route != route) or (i == 0):

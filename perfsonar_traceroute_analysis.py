@@ -45,13 +45,14 @@ def acquire_traceroute_tests(ps_node_url, test_time_range=2400):
     if not isinstance(test_time_range, int):
         raise ValueError
 
-    ps_url = "https://%s/esmond/perfsonar/archive/?event-type=packet-trace&time-range=%s" % (ps_node_url, TESTING_PERIOD)
+    ps_url = "https://%s/esmond/perfsonar/archive/?event-type=packet-trace&time-range=%d" % (ps_node_url, TESTING_PERIOD)
     traceroute_tests = json_loader_saver.retrieve_json_from_url(ps_url)
 
     data_list = []
     for singular_test in traceroute_tests:
             url = urllib.parse.urlsplit(singular_test['url'], scheme="https")
-            api_key = "https://" + url.netloc + url.path + "packet-trace/base?time-range=" + str(test_time_range)
+            api_key = "https://{}{}packet-trace/base?time-range={}".format(
+                url.netloc, url.path, test_time_range)
             data_list.append({'api': api_key,
                               'source': singular_test['source'],
                               'destination': singular_test["destination"]})
@@ -59,12 +60,11 @@ def acquire_traceroute_tests(ps_node_url, test_time_range=2400):
     return data_list
 
 
-def latest_route_analysis(traceroute_test_data, traceroute_matrix, rdns_query):
+def latest_route_analysis(traceroute_test_data, traceroute_matrix):
     """
     Performs the current and historical analysis 
     :param traceroute_test_data: traceroute results
-    :param traceroute_matrix: 
-    :param rdns_query: 
+    :param traceroute_matrix:
     :return: 
     """
     traceroute = classes.PsTrace.Traceroute(traceroute_test_data, J2_TRACEROUTE_WEB_PAGE_FP)
@@ -73,22 +73,12 @@ def latest_route_analysis(traceroute_test_data, traceroute_matrix, rdns_query):
     destination_ip = traceroute.destination_ip
 
     traceroute.perform_traceroute_analysis()
-
-    # Adds domain values to each hop within the traceroute.route_stats dictionary
-    # due to object variable referencing
-    for index, hop in enumerate(traceroute.route_stats):
-        hop.update({"domain": rdns_query(hop['ip'])})
-
     traceroute.latest_trace_output()
-
     historical_routes = traceroute.historical_diff_routes()
-    # Adds domain name to each route within historical routes
-    if historical_routes:
-        for historical_route in historical_routes:
-            historical_route.update({"layer3_route": rdns_query(*historical_route["layer3_route"])})
 
     fp_html = "{source}-to-{dest}.html".format(source=source_ip, dest=destination_ip)
-    # Replaces the colons(:) for IPv6 addresses to full-stops(.) to prevent file path issues when saving files on Win32
+    # Replaces the colons(:) for IPv6 addresses with full-stops(.)
+    # to prevent file path issues when saving on Win32
     if sys.platform == "win32":
         fp_html = fp_html.replace(":", ".")
     with open(os.path.join(HTML_DIR, fp_html), "w") as html_file:
@@ -130,11 +120,11 @@ def main(perfsonar_ma_url, time_period):
 
     # Computes the trace route data for all tests found within the perfSONAR MA
     for traceroute in traceroute_metadata:
-        source, destination = traceroute["source"], traceroute["destination"]
+        source, destination = traceroute.get("source"), traceroute.get("destination")
         try:
-            route_stats = latest_route_analysis(traceroute, traceroute_matrix, rdns_query)
+            route_stats = latest_route_analysis(traceroute, traceroute_matrix)
         except HTTPError as e:
-            print(e, "unable to retrieve traceroute data from %s" % (traceroute["api"]))
+            print(e, "unable to retrieve traceroute data from %s" % traceroute.get("api"))
             print("Retrieving next test....")
             traceroute_matrix.update_matrix(source=source,
                                             destination=destination,
