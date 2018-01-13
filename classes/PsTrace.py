@@ -422,10 +422,16 @@ class Traceroute(Jinja2Template):
         return [hop["ip"] if "ip" in hop else "null tag:%s_%d" % (self.destination_ip, index + 1)
                 for (index, hop) in enumerate(route_test["val"])]
 
-    @staticmethod
-    def __generate_domain_list(route_test):
-        return [hop.get('hostname') if hop.get('hostname') else hop.get('ip')
-                for hop in route_test["val"]]
+    def __generate_domain_list(self, route_test):
+        hostname_list = list()
+        for index, hop in enumerate(route_test["val"]):
+            if "hostname" in hop:
+                hostname_list.append(hop["hostname"])
+            elif "ip" in hop:
+                hostname_list.append(hop["ip"])
+            else:
+                hostname_list.append("null tag:%s_%d" % (self.destination_ip, index + 1))
+        return hostname_list
 
     @staticmethod
     def __retrieve_asn(ps_hop_dictionary):
