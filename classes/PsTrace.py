@@ -154,7 +154,7 @@ class RouteComparison(DataStore, Jinja2Template):
             different_lengths = False
 
         if different_lengths:
-            no_of_null_hops = len([hop for hop in list_a[end_route_slice] if not hop])
+            no_of_null_hops = len([hop for hop in list_a[end_route_slice] if 'null tag:' in hop])
             if proposed_null_length is no_of_null_hops:
                 list_a = list_a[:min(lengths)]
                 print(list_a)
