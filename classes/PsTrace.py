@@ -112,7 +112,7 @@ class RouteComparison(DataStore, Jinja2Template):
             previous = [hop["domain"] for hop in self.data_store[src_ip][dest_ip]]
             current = [hop["domain"] for hop in route_stats]
 
-            if self.comparison_check(previous, current):
+            if self.difference_check_with_threshold(previous, current):
                 print("Route Changed")
                 previous_route = self.data_store[src_ip][dest_ip]
                 # Update current route into data_store dictionary to prevent update by reference
@@ -127,20 +127,21 @@ class RouteComparison(DataStore, Jinja2Template):
             except KeyError:
                 self.data_store.update({src_ip: {dest_ip: stats}})
 
-    def comparison_check(self, list_a, list_b):
+    def difference_check_with_threshold(self, list_a, list_b):
         """
         Performs a comparison check between two lists. It also checks for false positives when one route
         reaches all but the end node
         :param list_a:
         :param list_b:
-        :return:
+        :return: True or False
         """
-        if not (list_a or list_b):
-            raise ValueError
-        if isinstance(list_a, int) or isinstance(list_b, int):
-            raise TypeError
         if self.threshold > 1.0:
-            raise ValueError
+            raise ValueError('Threshold can not be greater than 1.0')
+
+        if isinstance(list_a, int):
+            list_a = [list_a]
+        if isinstance(list_b, int):
+            list_b = [list_b]
 
         different_lengths = True
 
@@ -153,18 +154,22 @@ class RouteComparison(DataStore, Jinja2Template):
         elif len(list_a) == len(list_b):
             different_lengths = False
 
-        if different_lengths:
-            no_of_null_hops = len([hop for hop in list_a[end_route_slice] if 'null tag:' in hop])
+        if different_lengths and 'null tag:' in str(list_a[-1]):
+            no_of_null_hops = len([hop for hop in list_a[end_route_slice]
+                                   if 'null tag:' in str(hop)])
             if proposed_null_length is no_of_null_hops:
                 list_a = list_a[:min(lengths)]
-                print(list_a)
 
         combined_list = list(itertools.zip_longest(list_a, list_b))
         combined_list_length = len(combined_list)
         number_of_differences = len([i for i, j in combined_list if i != j])
 
-        if number_of_differences / combined_list_length > self.threshold:
+        percentage_difference = number_of_differences / combined_list_length
+        if not percentage_difference and not self.threshold:
+            return False
+        elif percentage_difference >= self.threshold:
             return True
+        return False
 
     @staticmethod
     def __create_email_message(previous_route, current_route):
