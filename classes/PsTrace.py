@@ -4,13 +4,12 @@ import ipaddress
 import itertools
 import json
 import socket
-import os
+import os.path
 import statistics
 import time
 
 import jinja2
 
-from conf.email_configuration import EMAIL_TO, EMAIL_FROM, EMAIL_SUBJECT, EMAIL_SERVER
 from lib import email, json_loader_saver
 
 
@@ -219,7 +218,7 @@ class RouteComparison(DataStore, Jinja2Template):
         html.append("\n</table>")
         return html
 
-    def send_email_alert(self):
+    def send_email_alert(self, email_to, email_from, subject, smtp_server):
         """
         Sends an email message to recipients regarding the routes that have changed
 
@@ -243,10 +242,11 @@ class RouteComparison(DataStore, Jinja2Template):
             psTrace
         :return: None
         """
+
         email_body = "".join(self.email_contents)
         email_message = self.render_template_output(route_changes=email_body)
-        email.send_mail(EMAIL_TO, EMAIL_FROM, EMAIL_SUBJECT, email_message, EMAIL_SERVER)
-        print("Notification email sent to %s" % ", ".join(EMAIL_TO))
+        email.send_mail(email_to, email_from, subject, email_message, smtp_server)
+        print("Notification email sent to %s" % ", ".join(email_to))
 
 
 class ReverseDNS(DataStore):
@@ -553,7 +553,7 @@ class Traceroute(Jinja2Template):
 
             if len(rtt) > 1 and rtt:
                 # rounds all hop_details to 2 d.p.s
-                hop_details = {key: round(hop_details.get(key), 2)for key in hop_details}
+                hop_details = {key: round(float(hop_details[key]), 2)for key in hop_details}
                 status = "warn" if hop_details["rtt"] > hop_details["threshold"] else "okay"
             elif len(rtt) == 1 and rtt:
                 status = "unknown"
