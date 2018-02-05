@@ -142,23 +142,6 @@ class RouteComparison(DataStore, Jinja2Template):
         if isinstance(list_b, int):
             list_b = [list_b]
 
-        different_lengths = True
-
-        lengths = [len(list_a), len(list_b)]
-        end_route_slice = slice(min(lengths) - 1, max(lengths))
-        proposed_null_length = end_route_slice.stop - end_route_slice.start
-
-        if len(list_a) < len(list_b):
-            list_a, list_b = list_b, list_a
-        elif len(list_a) == len(list_b):
-            different_lengths = False
-
-        if different_lengths and 'null tag:' in str(list_a[-1]):
-            no_of_null_hops = len([hop for hop in list_a[end_route_slice]
-                                   if 'null tag:' in str(hop)])
-            if proposed_null_length is no_of_null_hops:
-                list_a = list_a[:min(lengths)]
-
         combined_list = list(itertools.zip_longest(list_a, list_b))
         combined_list_length = len(combined_list)
         number_of_differences = len([i for i, j in combined_list if i != j])
