@@ -93,7 +93,7 @@ class RouteComparison(DataStore, Jinja2Template):
         self.email_contents = []
         self.threshold = threshold
 
-    def compare_and_update(self, src_ip, dest_ip, route_stats):
+    def compare_and_update(self, src_ip, src_domain, dest_ip, dest_domain, route_stats, timestamp):
         """
         Compares the current route with routes from when the previous test ran.
         If no previous routes are found, the current route will be appended to the
@@ -118,7 +118,7 @@ class RouteComparison(DataStore, Jinja2Template):
                 self.data_store[src_ip][dest_ip] = copy.copy(stats)
 
                 # Creates email body for routes that have changed
-                self.email_contents.extend(["<h3>From %s to %s</h3>" % (src_ip, dest_ip)])
+                self.email_contents.extend(["<h3>From %s to %s on %s</h3>" % (src_domain, dest_domain, timestamp)])
                 self.email_contents.extend(self.__create_email_message(previous_route, stats))
         except KeyError:
             try:

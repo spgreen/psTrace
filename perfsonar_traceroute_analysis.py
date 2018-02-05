@@ -95,7 +95,7 @@ def latest_route_analysis(traceroute_test_data, traceroute_matrix):
     traceroute_rtt = traceroute.route_stats[-1]["rtt"]
     traceroute_matrix.update_matrix(source=source_ip, destination=destination_ip, rtt=traceroute_rtt, fp_html=fp_html)
 
-    return traceroute.route_stats
+    return traceroute.end_date, traceroute.route_stats
 
 
 def main(perfsonar_ma_url, time_period):
@@ -129,8 +129,10 @@ def main(perfsonar_ma_url, time_period):
     # Computes the trace route data for all tests found within the perfSONAR MA
     for traceroute in traceroute_metadata:
         source, destination = traceroute.get("source"), traceroute.get("destination")
+        source_domain, destination_domain = rdns_query(source, destination)
         try:
-            route_stats = latest_route_analysis(traceroute, traceroute_matrix)
+            timestamp, route_stats = latest_route_analysis(traceroute, traceroute_matrix)
+
         except HTTPError as e:
             print(e, "unable to retrieve traceroute data from %s" % traceroute.get("api"))
             print("Retrieving next test....")
@@ -139,14 +141,14 @@ def main(perfsonar_ma_url, time_period):
                                             rtt=False,
                                             fp_html=False)
             continue
-
-        source_domain, destination_domain = rdns_query(source, destination)
         # Creates the hop list from the route_stats return
         route_from_source = [source_domain] + [hop["domain"] for hop in route_stats][:-1]
         # Creates force nodes between previous and current hop
         force_graph.create_force_nodes(route_stats, route_from_source, destination)
         # Compares current route with previous and stores current route in PREVIOUS_ROUTE_FP
-        route_compare(src_ip=source, dest_ip=destination, route_stats=route_stats)
+        route_compare(src_ip=source, src_domain=source_domain,
+                      dest_ip=destination, dest_domain=destination_domain,
+                      route_stats=route_stats, timestamp=timestamp)
 
     if EMAIL_ALERTS and route_comparison.email_contents:
         route_comparison.send_email_alert(EMAIL_TO, EMAIL_FROM, EMAIL_SUBJECT, SMTP_SERVER)
