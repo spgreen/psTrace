@@ -4,13 +4,12 @@ import ipaddress
 import itertools
 import json
 import socket
-import os
+import os.path
 import statistics
 import time
 
 import jinja2
 
-from conf.email_configuration import EMAIL_TO, EMAIL_FROM, EMAIL_SUBJECT, EMAIL_SERVER
 from lib import email, json_loader_saver
 
 
@@ -219,7 +218,7 @@ class RouteComparison(DataStore, Jinja2Template):
         html.append("\n</table>")
         return html
 
-    def send_email_alert(self):
+    def send_email_alert(self, email_to, email_from, subject, smtp_server):
         """
         Sends an email message to recipients regarding the routes that have changed
 
@@ -243,10 +242,11 @@ class RouteComparison(DataStore, Jinja2Template):
             psTrace
         :return: None
         """
+
         email_body = "".join(self.email_contents)
         email_message = self.render_template_output(route_changes=email_body)
-        email.send_mail(EMAIL_TO, EMAIL_FROM, EMAIL_SUBJECT, email_message, EMAIL_SERVER)
-        print("Notification email sent to %s" % ", ".join(EMAIL_TO))
+        email.send_mail(email_to, email_from, subject, email_message, smtp_server)
+        print("Notification email sent to %s" % ", ".join(email_to))
 
 
 class ReverseDNS(DataStore):
@@ -418,25 +418,53 @@ class Traceroute(Jinja2Template):
         self.latest_trace_route = self.trace_route_results[-1]
         self.end_date = self.datetime_from_timestamps(self.latest_trace_route["ts"])
 
-    def __generate_hop_list(self, route_test):
+    @staticmethod
+    def __tidy_route_slice(route):
         """
-        Retrieves the traceroute from traceroute test index from self.trace_route_results[index]
-        :param route_test: raw trace route test from self.trace_route_results[index]
-        :return: trace route for traceroute_test
+        Determines whether a route is able to be tidied up in the case of trailing timeouts i.e. 'null tags:'.
+        Returns the slice needed to tidy set route but does not apply said slice to route.
+        :param route: traceroute route
+        :return: None or slice to be performed on route
         """
-        return [hop["ip"] if "ip" in hop else "null tag:%s_%d" % (self.destination_ip, index + 1)
-                for (index, hop) in enumerate(route_test["val"])]
+        null_indices = [index for index, hop in enumerate(route) if 'null tag' in hop]
+        consecutive_null_ranges = []
+        if not null_indices:
+            return
+        if "null tag" in route[-1]:
+            for k, g in itertools.groupby(enumerate(null_indices), lambda x: x[0] - x[1]):
+                group = list(g)
+                if len(group) > 1:
+                    consecutive_null_ranges.append((group[0][1], group[-1][1]))
+                else:
+                    consecutive_null_ranges.append(group[0][1])
+        if consecutive_null_ranges and isinstance(consecutive_null_ranges[-1], tuple):
+            return slice(0, consecutive_null_ranges[-1][0] + 1)
+        return
 
-    def __generate_domain_list(self, route_test):
-        hostname_list = list()
+    def __generate_hop_ip_and_domain_list(self, route_test):
+        """
+        Returns the IP address and domain address route from the traceroute test provided by route test
+        :param route_test: traceroute test
+        :return:
+        """
+        ip_addresses = []
+        domains = []
         for index, hop in enumerate(route_test["val"]):
             if "hostname" in hop:
-                hostname_list.append(hop["hostname"])
+                domains.append(hop["hostname"])
+                ip_addresses.append(hop["ip"])
             elif "ip" in hop:
-                hostname_list.append(hop["ip"])
+                domains.append(hop["ip"])
+                ip_addresses.append(hop["ip"])
             else:
-                hostname_list.append("null tag:%s_%d" % (self.destination_ip, index + 1))
-        return hostname_list
+                null_tag = "null tag:%s_%d" % (self.destination_ip, index + 1)
+                domains.append(null_tag)
+                ip_addresses.append(null_tag)
+        slice_amount = self.__tidy_route_slice(ip_addresses)
+        if slice_amount:
+            domains = domains[slice_amount]
+            ip_addresses = ip_addresses[slice_amount]
+        return {"domains": domains, "ip_addresses": ip_addresses}
 
     @staticmethod
     def __retrieve_asn(ps_hop_dictionary):
@@ -460,8 +488,10 @@ class Traceroute(Jinja2Template):
     @staticmethod
     def datetime_from_timestamps(*timestamps):
         """
-        :param timestamps:
-        :return:
+        Changes the epoch timestamps to its corresponding local time of the system and stores it in a list with
+        the locale's date and time representation
+        :param timestamps: epoch timestamp(s) e.g. 1485920150
+        :return: list of converted timestamps
         """
         ts_store = [time.strftime("%c", time.localtime(int(ts))) for ts in timestamps]
         if len(ts_store) == 1:
@@ -538,8 +568,9 @@ class Traceroute(Jinja2Template):
         :return: route statistics for the most recent traceroute
         """
         # Retrieves latest route from self.trace_route_results
-        hop_ip_list = self.__generate_hop_list(self.latest_trace_route)
-        hop_domain_list = self.__generate_domain_list(self.latest_trace_route)
+        hop_ip_and_domain_list = self.__generate_hop_ip_and_domain_list(self.latest_trace_route)
+        hop_ip_list = hop_ip_and_domain_list["ip_addresses"]
+        hop_domain_list = hop_ip_and_domain_list["domains"]
 
         for (hop_index, current_hop_ip) in enumerate(hop_ip_list):
             # Goes through every test comparing the IP occurring at the same hop_index of the latest trace route
@@ -553,7 +584,7 @@ class Traceroute(Jinja2Template):
 
             if len(rtt) > 1 and rtt:
                 # rounds all hop_details to 2 d.p.s
-                hop_details = {key: round(hop_details.get(key), 2)for key in hop_details}
+                hop_details = {key: round(float(hop_details[key]), 2)for key in hop_details}
                 status = "warn" if hop_details["rtt"] > hop_details["threshold"] else "okay"
             elif len(rtt) == 1 and rtt:
                 status = "unknown"
@@ -587,13 +618,13 @@ class Traceroute(Jinja2Template):
         # Retrieves all of the different routes that occurred during the data period and stores the routes within the
         # historical_routes list
         for i in sorted_diff_route_index:
-            route = self.__generate_domain_list(self.trace_route_results[i])
+            route = self.__generate_hop_ip_and_domain_list(self.trace_route_results[i])
             asn = [self.__retrieve_asn(hop) for hop in self.trace_route_results[i]["val"]]
 
             if (i+1 not in sorted_diff_route_index) or (previous_route != route) or (i == 0):
                 data = {'index': i,
                         'ts': self.datetime_from_timestamps(self.trace_route_results[i]["ts"]),
-                        'layer3_route': route,
+                        'layer3_route': route["domains"],
                         'as_route': asn}
                 historical_routes.append(data)
             previous_route = route

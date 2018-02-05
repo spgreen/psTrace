@@ -1,19 +1,27 @@
 #!/usr/bin/python3
 import argparse
 import datetime
-import os
+import os.path
 import sys
+import configparser
 import urllib.parse
 
 from urllib.error import HTTPError
 
 import classes.PsTrace
 from lib import json_loader_saver
-from conf.email_configuration import ENABLE_EMAIL_ALERTS
 
-TESTING_PERIOD = 1860
-# Threshold set between 0.0 to 1.0
-THRESHOLD = 0
+
+config = configparser.ConfigParser()
+config.read('config.ini')
+
+TESTING_PERIOD = int(config['PERFSONAR']['MAX_TIME_BETWEEN_TESTS'])
+THRESHOLD = float(config['ROUTE_COMPARISON']['THRESHOLD'])
+EMAIL_ALERTS = int(config['EMAIL']['ALERTS'])
+EMAIL_TO = config['EMAIL']['TO'].replace(' ', '').split(',')
+EMAIL_FROM = config['EMAIL']['FROM']
+EMAIL_SUBJECT = config['EMAIL']['SUBJECT']
+SMTP_SERVER = config['EMAIL']['SMTP_SERVER']
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -140,8 +148,8 @@ def main(perfsonar_ma_url, time_period):
         # Compares current route with previous and stores current route in PREVIOUS_ROUTE_FP
         route_compare(src_ip=source, dest_ip=destination, route_stats=route_stats)
 
-    if ENABLE_EMAIL_ALERTS and route_comparison.email_contents:
-        route_comparison.send_email_alert()
+    if EMAIL_ALERTS and route_comparison.email_contents:
+        route_comparison.send_email_alert(EMAIL_TO, EMAIL_FROM, EMAIL_SUBJECT, SMTP_SERVER)
 
     with open(DASHBOARD_WEB_PAGE_FP, "w") as web_matrix_file:
         current_time = datetime.datetime.now().strftime("%c")
