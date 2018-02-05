@@ -620,12 +620,14 @@ class Traceroute(Jinja2Template):
         for i in sorted_diff_route_index:
             route = self.__generate_hop_ip_and_domain_list(self.trace_route_results[i])
             asn = [self.__retrieve_asn(hop) for hop in self.trace_route_results[i]["val"]]
+            rtt = [round(hop['rtt'], 2) if 'rtt' in hop else "N/A" for hop in self.trace_route_results[i]["val"]]
 
             if (i+1 not in sorted_diff_route_index) or (previous_route != route) or (i == 0):
                 data = {'index': i,
                         'ts': self.datetime_from_timestamps(self.trace_route_results[i]["ts"]),
                         'layer3_route': route["domains"],
-                        'as_route': asn}
+                        'as_route': asn,
+                        'rtt': rtt}
                 historical_routes.append(data)
             previous_route = route
         return historical_routes
@@ -646,8 +648,10 @@ class Traceroute(Jinja2Template):
         """
         Creates HTML table for all historical routes found within historical_routes list
         e.g.
-        [{ts': timestamp1, 'layer3_route': [192.168.0.1, 192.168.0.254], 'as_route': ['N/A', 'N/A'], index: 12},
-         {'ts': timestamp2, 'layer3_route': [192.168.1.4, 192.168.1.254], 'as_route': ['N/A', 'N/A'], index: 2}]
+        [{'ts': timestamp1, 'layer3_route': [192.168.0.1, 192.168.0.254],
+          'as_route': ['N/A', 'N/A'], 'rtt': [0.12, 1.4] index: 12},
+         {'ts': timestamp2, 'layer3_route': [192.168.1.4, 192.168.1.254],
+          'as_route': ['N/A', 'N/A'], 'rtt': [0.13, 1.2] index: 2}]
         :param historical_routes: list containing all different historical routes
         :type historical_routes: list
         :return: HTML table of of all historical routes
@@ -656,10 +660,15 @@ class Traceroute(Jinja2Template):
         for h_route in historical_routes:
             html_historical.append("<p>{ts}</p>\n"
                                    "<table border='1'>\n"
-                                   "<tr><td>Hop</td><td>Domain</td><td>ASN</td></tr>\n".format(ts=h_route["ts"]))
+                                   "<tr>"
+                                   "<td>Hop</td><td>Domain</td><td>ASN</td><td>RTT (ms)</td>"
+                                   "</tr>\n".format(ts=h_route["ts"]))
 
-            for (index, hop) in enumerate(zip(h_route['layer3_route'], h_route['as_route'])):
-                html_historical.append("<tr><td>%d</td><td>%s</td><td>%s</td></tr>\n" % (index + 1, hop[0], hop[1]))
+            historical_details = zip(h_route['layer3_route'], h_route['as_route'], h_route['rtt'])
+            for (index, hop) in enumerate(historical_details):
+                html_historical.append("<tr>"
+                                       "<td>%d</td><td>%s</td><td>%s</td><td>%s</td>"
+                                       "</tr>\n" % (index + 1, hop[0], hop[1], hop[2]))
             html_historical.append("</table>\n")
         return "".join(html_historical)
 

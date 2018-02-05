@@ -19,7 +19,7 @@ psTrace is a traceroute analysis tool written in PythonV3 which retrieves tracer
 
 - Web Server (Apache, Nginx, etc)
 - SMTP Server (Postfix, etc) that does not require authentication for sending out email alerts 
-- Accesss to a PerfSONAR Measurement Archive with traceroute/tracepath data
+- Access to a PerfSONAR Measurement Archive with traceroute/tracepath data
 
 ## Using the psTrace Analysis Tool
 
@@ -32,7 +32,7 @@ psTrace is a traceroute analysis tool written in PythonV3 which retrieves tracer
    
         $ ln -s /full/path/to/pstrace/html/folder/ /var/www/html
     
-3. Edit the email constants within `conf/email_configuration.py` to values appropriate to your environment. Currently only supports sending emails to a SMTP server that does NOT require authentication. 
+3. Edit the email constants within `config.ini` to values appropriate to your environment. Currently only supports sending emails to a SMTP server that does NOT require authentication. 
 
     1. Set `ENABLE_EMAIL_ALERTS = 1` to enable alerts when traceroute changes occur. <br>**Default:** `ENABLE_EMAIL_ALERTS = 0`
     2. Multiple recipients can be added by modifying `EMAIL_TO` with one address after the other separated by a comma within the square brackets.
