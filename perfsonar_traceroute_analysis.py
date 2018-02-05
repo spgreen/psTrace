@@ -11,9 +11,10 @@ from urllib.error import HTTPError
 import classes.PsTrace
 from lib import json_loader_saver
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 config = configparser.ConfigParser()
-config.read('config.ini')
+config.read(os.path.join(BASE_DIR, 'config.ini'))
 
 TESTING_PERIOD = int(config['PERFSONAR']['MAX_TIME_BETWEEN_TESTS'])
 THRESHOLD = float(config['ROUTE_COMPARISON']['THRESHOLD'])
@@ -23,8 +24,7 @@ EMAIL_FROM = config['EMAIL']['FROM']
 EMAIL_SUBJECT = config['EMAIL']['SUBJECT']
 SMTP_SERVER = config['EMAIL']['SMTP_SERVER']
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
+# Directories
 HTML_DIR = os.path.join(BASE_DIR, "html")
 JSON_DIR = os.path.join(BASE_DIR, "json")
 TEMPLATE_DIR = os.path.join(BASE_DIR, "html_templates")
