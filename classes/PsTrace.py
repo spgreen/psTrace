@@ -1,5 +1,4 @@
 import collections
-import copy
 import ipaddress
 import itertools
 import json
@@ -93,38 +92,40 @@ class RouteComparison(DataStore, Jinja2Template):
         self.email_contents = []
         self.threshold = threshold
 
-    def compare_and_update(self, src_ip, src_domain, dest_ip, dest_domain, route_stats, timestamp):
+    def compare_and_update(self, src_ip, src_domain, dest_ip, dest_domain, route_stats, time_of_test):
         """
         Compares the current route with routes from when the previous test ran.
         If no previous routes are found, the current route will be appended to the
         data_store dictionary
-        :param src_ip: Source IP address
-        :type src_ip: str
-        :param dest_ip: Destination IP address
-        :type dest_ip: str
-        :param route_stats: Current trace route list
-        :type route_stats: list
-        :return: None
+        :param src_ip:
+        :param src_domain:
+        :param dest_ip:
+        :param dest_domain:
+        :param route_stats:
+        :param time_of_test:
+        :return:
         """
+
         stats = [{"domain": hop["domain"], "as": hop["as"], "rtt": hop["rtt"]} for hop in route_stats]
+        current_route = {'test_time': time_of_test, 'route': stats}
         try:
-            previous = [hop["domain"] for hop in self.data_store[src_ip][dest_ip]]
+            previous = [hop["domain"] for hop in self.data_store[src_ip][dest_ip]['route']]
             current = [hop["domain"] for hop in route_stats]
 
             if self.difference_check_with_threshold(previous, current):
                 print("Route Changed")
                 previous_route = self.data_store[src_ip][dest_ip]
                 # Update current route into data_store dictionary to prevent update by reference
-                self.data_store[src_ip][dest_ip] = copy.copy(stats)
+                self.data_store[src_ip][dest_ip] = current_route
 
                 # Creates email body for routes that have changed
-                self.email_contents.extend(["<h3>From %s to %s on %s</h3>" % (src_domain, dest_domain, timestamp)])
-                self.email_contents.extend(self.__create_email_message(previous_route, stats))
+                self.email_contents.extend(["<h3>From %s to %s</h3>\n" % (src_domain, dest_domain)])
+                self.email_contents.extend(self.__create_email_message(previous_route, current_route))
         except KeyError:
             try:
-                self.data_store[src_ip].update({dest_ip: stats})
+                self.data_store[src_ip].update({dest_ip: current_route})
             except KeyError:
-                self.data_store.update({src_ip: {dest_ip: stats}})
+                self.data_store.update({src_ip: {dest_ip: current_route}})
 
     def difference_check_with_threshold(self, list_a, list_b):
         """
@@ -171,25 +172,25 @@ class RouteComparison(DataStore, Jinja2Template):
                 8	nsw-brwy-ps1.aarnet.net.au	*
 
         :param previous_route: Historical trace route
-        :type previous_route: list
+        :type previous_route: dict
         :param current_route: Current trace route
-        :type current_route: list
+        :type current_route: dict
         :return html: list
         """
         # Adds "*" padding to the shortest route to ensure the current and previous route
         # are of equal length
-        combined_route = itertools.zip_longest(previous_route,
-                                               current_route,
+        combined_route = itertools.zip_longest(previous_route["route"],
+                                               current_route["route"],
                                                fillvalue={"domain": "*",
                                                           "as": "*",
                                                           "rtt": "*"})
-        html = ["<table>\n<tr>"
+        html = ["<table border=1>\n<tr>"
                 "<th>Hop:</th>"
-                "<th>Previous Route:</th>"
-                "<th>Previous RTT:</th>"
-                "<th>Current Route:</th>"
-                "<th>Current RTT:</th>"
-                "</tr>"]
+                "<th>%s<br>Previous Test: </th>"
+                "<th>RTT:</th>"
+                "<th>%s<br>Current Test: </th>"
+                "<th>RTT:</th>"
+                "</tr>" % (previous_route['test_time'], current_route['test_time'])]
         for index, route in enumerate(combined_route):
             html.append("\n<tr>"
                         "<td>%d</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td>"
@@ -198,7 +199,7 @@ class RouteComparison(DataStore, Jinja2Template):
                                    route[0]["rtt"],
                                    route[1]["domain"],
                                    route[1]["rtt"]))
-        html.append("\n</table>")
+        html.append("\n</table>\n")
         return html
 
     def send_email_alert(self, email_to, email_from, subject, smtp_server):
@@ -212,7 +213,7 @@ class RouteComparison(DataStore, Jinja2Template):
             From owamp-ps.singaren.net.sg to nsw-brwy-ps1.aarnet.net.au
 
             Hop:	Previous Route:              Current Route:
-            1	et-1-0-0.singaren.net.sg	et-1-0-0.singaren.net.sg
+            1	et-1-0-0.singaren.net.sg	et-1-0-0.singaren.net.sg0
             2	sin.aarnet.net.au	        sin.aarnet.net.au
             3	knsg.wa.aarnet.net.au	    d.syd.aarnet.net.au
             4	prka.sa.aarnet.net.au	    c.syd.aarnet.net.au

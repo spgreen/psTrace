@@ -131,7 +131,7 @@ def main(perfsonar_ma_url, time_period):
         source, destination = traceroute.get("source"), traceroute.get("destination")
         source_domain, destination_domain = rdns_query(source, destination)
         try:
-            timestamp, route_stats = latest_route_analysis(traceroute, traceroute_matrix)
+            time_of_test, route_stats = latest_route_analysis(traceroute, traceroute_matrix)
 
         except HTTPError as e:
             print(e, "unable to retrieve traceroute data from %s" % traceroute.get("api"))
@@ -148,7 +148,7 @@ def main(perfsonar_ma_url, time_period):
         # Compares current route with previous and stores current route in PREVIOUS_ROUTE_FP
         route_compare(src_ip=source, src_domain=source_domain,
                       dest_ip=destination, dest_domain=destination_domain,
-                      route_stats=route_stats, timestamp=timestamp)
+                      route_stats=route_stats, time_of_test=time_of_test)
 
     if EMAIL_ALERTS and route_comparison.email_contents:
         route_comparison.send_email_alert(EMAIL_TO, EMAIL_FROM, EMAIL_SUBJECT, SMTP_SERVER)
