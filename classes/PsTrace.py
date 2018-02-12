@@ -21,7 +21,6 @@ class Jinja2Template:
         """
         Renders Jinja2 Templates with user submitted template variables
         :param template_variables: variables used within said template
-        :type template_variables: str
         :return: rendered page or None if template could not be found
         """
         path, template_file = os.path.split(self.jinja_template_fp)
@@ -86,10 +85,11 @@ class RouteComparison(DataStore, Jinja2Template):
      used for the email message and the email function to send said generated
      HTML email message.
     """
+    changed_routes = []
+
     def __init__(self, threshold, jinja_template_file_path):
         DataStore.__init__(self)
         Jinja2Template.__init__(self, jinja_template_file_path)
-        self.email_contents = []
         self.threshold = threshold
 
     def compare_and_update(self, src_ip, src_domain, dest_ip, dest_domain, route_stats, time_of_test):
@@ -107,9 +107,9 @@ class RouteComparison(DataStore, Jinja2Template):
         """
 
         stats = [{"domain": hop["domain"], "as": hop["as"], "rtt": hop["rtt"]} for hop in route_stats]
-        current_route = {'test_time': time_of_test, 'route': stats}
+        current_route = {'test_time': time_of_test, 'route_info': stats}
         try:
-            previous = [hop["domain"] for hop in self.data_store[src_ip][dest_ip]['route']]
+            previous = [hop["domain"] for hop in self.data_store[src_ip][dest_ip]['route_info']]
             current = [hop["domain"] for hop in route_stats]
 
             if self.difference_check_with_threshold(previous, current):
@@ -118,9 +118,17 @@ class RouteComparison(DataStore, Jinja2Template):
                 # Update current route into data_store dictionary to prevent update by reference
                 self.data_store[src_ip][dest_ip] = current_route
 
-                # Creates email body for routes that have changed
-                self.email_contents.extend(["<h3>From %s to %s</h3>\n" % (src_domain, dest_domain)])
-                self.email_contents.extend(self.__create_email_message(previous_route, current_route))
+                routes = itertools.zip_longest(previous_route['route_info'],
+                                               current_route['route_info'],
+                                               fillvalue={"domain": "",
+                                                          "as": "",
+                                                          "rtt": ""})
+
+                self.changed_routes.append({'source_domain': src_domain,
+                                            'destination_domain': dest_domain,
+                                            'previous_test_time': previous_route['test_time'],
+                                            'current_test_time': time_of_test,
+                                            'previous_and_current_route': routes})
         except KeyError:
             try:
                 self.data_store[src_ip].update({dest_ip: current_route})
@@ -154,54 +162,6 @@ class RouteComparison(DataStore, Jinja2Template):
             return True
         return False
 
-    @staticmethod
-    def __create_email_message(previous_route, current_route):
-        """
-        Returns an HTML table str that compare the previous route with the current
-        Example of the generated HTML message:
-            From owamp-ps.singaren.net.sg to nsw-brwy-ps1.aarnet.net.au
-
-                Hop:	Previous Route:              Current Route:
-                1	et-1-0-0.singaren.net.sg	et-1-0-0.singaren.net.sg
-                2	sin.aarnet.net.au	        sin.aarnet.net.au
-                3	knsg.wa.aarnet.net.au	    d.syd.aarnet.net.au
-                4	prka.sa.aarnet.net.au	    c.syd.aarnet.net.au
-                5	eskp.nsw.aarnet.net.au	    be4.ta1.brwy.nsw.aarnet.net.au
-                6	rsby.nsw.aarnet.net.au	    brwy.nsw.aarnet.net.au
-                7	brwy.nsw.aarnet.net.au	    nsw-brwy-ps1.aarnet.net.au
-                8	nsw-brwy-ps1.aarnet.net.au	*
-
-        :param previous_route: Historical trace route
-        :type previous_route: dict
-        :param current_route: Current trace route
-        :type current_route: dict
-        :return html: list
-        """
-        # Adds "*" padding to the shortest route to ensure the current and previous route
-        # are of equal length
-        combined_route = itertools.zip_longest(previous_route["route"],
-                                               current_route["route"],
-                                               fillvalue={"domain": "*",
-                                                          "as": "*",
-                                                          "rtt": "*"})
-        html = ["<table border=1>\n<tr>"
-                "<th>Hop:</th>"
-                "<th>%s<br>Previous Test: </th>"
-                "<th>RTT:</th>"
-                "<th>%s<br>Current Test: </th>"
-                "<th>RTT:</th>"
-                "</tr>" % (previous_route['test_time'], current_route['test_time'])]
-        for index, route in enumerate(combined_route):
-            html.append("\n<tr>"
-                        "<td>%d</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td>"
-                        "</tr>" % (index + 1,
-                                   route[0]["domain"],
-                                   route[0]["rtt"],
-                                   route[1]["domain"],
-                                   route[1]["rtt"]))
-        html.append("\n</table>\n")
-        return html
-
     def send_email_alert(self, email_to, email_from, subject, smtp_server):
         """
         Sends an email message to recipients regarding the routes that have changed
@@ -226,9 +186,7 @@ class RouteComparison(DataStore, Jinja2Template):
             psTrace
         :return: None
         """
-
-        email_body = "".join(self.email_contents)
-        email_message = self.render_template_output(route_changes=email_body)
+        email_message = self.render_template_output(changed_routes=self.changed_routes)
         email.send_mail(email_to, email_from, subject, email_message, smtp_server)
         print("Notification email sent to %s" % ", ".join(email_to))
 

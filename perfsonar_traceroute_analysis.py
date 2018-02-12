@@ -128,29 +128,35 @@ def main(perfsonar_ma_url, time_period):
 
     # Computes the trace route data for all tests found within the perfSONAR MA
     for traceroute in traceroute_metadata:
-        source, destination = traceroute.get("source"), traceroute.get("destination")
-        source_domain, destination_domain = rdns_query(source, destination)
+        source_ip, destination_ip = traceroute.get("source"), traceroute.get("destination")
+        source_domain, destination_domain = rdns_query(source_ip, destination_ip)
         try:
             time_of_test, route_stats = latest_route_analysis(traceroute, traceroute_matrix)
+            current_traceroute_info = {"time": time_of_test,
+                                       "source_ip": source_ip,
+                                       "destination_ip": destination_ip,
+                                       "source_domain": source_domain,
+                                       "destination_domain": destination_domain,
+                                       "route": route_stats}
 
         except HTTPError as e:
             print(e, "unable to retrieve traceroute data from %s" % traceroute.get("api"))
             print("Retrieving next test....")
-            traceroute_matrix.update_matrix(source=source,
-                                            destination=destination,
+            traceroute_matrix.update_matrix(source=source_ip,
+                                            destination=destination_ip,
                                             rtt=False,
                                             fp_html=False)
             continue
         # Creates the hop list from the route_stats return
         route_from_source = [source_domain] + [hop["domain"] for hop in route_stats][:-1]
         # Creates force nodes between previous and current hop
-        force_graph.create_force_nodes(route_stats, route_from_source, destination)
+        force_graph.create_force_nodes(route_stats, route_from_source, destination_ip)
         # Compares current route with previous and stores current route in PREVIOUS_ROUTE_FP
-        route_compare(src_ip=source, src_domain=source_domain,
-                      dest_ip=destination, dest_domain=destination_domain,
+        route_compare(src_ip=source_ip, src_domain=source_domain,
+                      dest_ip=destination_ip, dest_domain=destination_domain,
                       route_stats=route_stats, time_of_test=time_of_test)
 
-    if EMAIL_ALERTS and route_comparison.email_contents:
+    if EMAIL_ALERTS and route_comparison.changed_routes:
         route_comparison.send_email_alert(EMAIL_TO, EMAIL_FROM, EMAIL_SUBJECT, SMTP_SERVER)
 
     with open(DASHBOARD_WEB_PAGE_FP, "w") as web_matrix_file:
