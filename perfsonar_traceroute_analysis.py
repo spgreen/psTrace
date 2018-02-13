@@ -131,14 +131,7 @@ def main(perfsonar_ma_url, time_period):
         source_ip, destination_ip = traceroute.get("source"), traceroute.get("destination")
         source_domain, destination_domain = rdns_query(source_ip, destination_ip)
         try:
-            time_of_test, route_stats = latest_route_analysis(traceroute, traceroute_matrix)
-            current_traceroute_info = {"time": time_of_test,
-                                       "source_ip": source_ip,
-                                       "destination_ip": destination_ip,
-                                       "source_domain": source_domain,
-                                       "destination_domain": destination_domain,
-                                       "route": route_stats}
-
+            test_time, route_stats = latest_route_analysis(traceroute, traceroute_matrix)
         except HTTPError as e:
             print(e, "unable to retrieve traceroute data from %s" % traceroute.get("api"))
             print("Retrieving next test....")
@@ -152,9 +145,12 @@ def main(perfsonar_ma_url, time_period):
         # Creates force nodes between previous and current hop
         force_graph.create_force_nodes(route_stats, route_from_source, destination_ip)
         # Compares current route with previous and stores current route in PREVIOUS_ROUTE_FP
-        route_compare(src_ip=source_ip, src_domain=source_domain,
-                      dest_ip=destination_ip, dest_domain=destination_domain,
-                      route_stats=route_stats, time_of_test=time_of_test)
+        route_compare(test_time=test_time,
+                      source_ip=source_ip,
+                      destination_ip=destination_ip,
+                      source_domain=source_domain,
+                      destination_domain=destination_domain,
+                      route_stats=route_stats)
 
     if EMAIL_ALERTS and route_comparison.changed_routes:
         route_comparison.send_email_alert(EMAIL_TO, EMAIL_FROM, EMAIL_SUBJECT, SMTP_SERVER)

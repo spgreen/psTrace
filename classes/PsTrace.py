@@ -92,31 +92,31 @@ class RouteComparison(DataStore, Jinja2Template):
         Jinja2Template.__init__(self, jinja_template_file_path)
         self.threshold = threshold
 
-    def compare_and_update(self, src_ip, src_domain, dest_ip, dest_domain, route_stats, time_of_test):
+    def compare_and_update(self, source_ip, source_domain, destination_ip, destination_domain, route_stats, test_time):
         """
         Compares the current route with routes from when the previous test ran.
         If no previous routes are found, the current route will be appended to the
         data_store dictionary
-        :param src_ip:
-        :param src_domain:
-        :param dest_ip:
-        :param dest_domain:
+        :param source_ip:
+        :param source_domain:
+        :param destination_ip:
+        :param destination_domain:
         :param route_stats:
-        :param time_of_test:
+        :param test_time:
         :return:
         """
 
         stats = [{"domain": hop["domain"], "as": hop["as"], "rtt": hop["rtt"]} for hop in route_stats]
-        current_route = {'test_time': time_of_test, 'route_info': stats}
+        current_route = {'test_time': test_time, 'route_info': stats}
         try:
-            previous = [hop["domain"] for hop in self.data_store[src_ip][dest_ip]['route_info']]
+            previous = [hop["domain"] for hop in self.data_store[source_ip][destination_ip]['route_info']]
             current = [hop["domain"] for hop in route_stats]
 
             if self.difference_check_with_threshold(previous, current):
                 print("Route Changed")
-                previous_route = self.data_store[src_ip][dest_ip]
+                previous_route = self.data_store[source_ip][destination_ip]
                 # Update current route into data_store dictionary to prevent update by reference
-                self.data_store[src_ip][dest_ip] = current_route
+                self.data_store[source_ip][destination_ip] = current_route
 
                 routes = itertools.zip_longest(previous_route['route_info'],
                                                current_route['route_info'],
@@ -124,16 +124,16 @@ class RouteComparison(DataStore, Jinja2Template):
                                                           "as": "",
                                                           "rtt": ""})
 
-                self.changed_routes.append({'source_domain': src_domain,
-                                            'destination_domain': dest_domain,
+                self.changed_routes.append({'source_domain': source_domain,
+                                            'destination_domain': destination_domain,
                                             'previous_test_time': previous_route['test_time'],
-                                            'current_test_time': time_of_test,
+                                            'current_test_time': test_time,
                                             'previous_and_current_route': routes})
         except KeyError:
             try:
-                self.data_store[src_ip].update({dest_ip: current_route})
+                self.data_store[source_ip].update({destination_ip: current_route})
             except KeyError:
-                self.data_store.update({src_ip: {dest_ip: current_route}})
+                self.data_store.update({source_ip: {destination_ip: current_route}})
 
     def difference_check_with_threshold(self, list_a, list_b):
         """
@@ -566,10 +566,11 @@ class Traceroute(Jinja2Template):
 
             if (i+1 not in sorted_diff_route_index) or (previous_route != route) or (i == 0):
                 data = {'index': i,
-                        'ts': self.datetime_from_timestamps(self.trace_route_results[i]["ts"]),
-                        'layer3_route': route["domains"],
+                        'timestamp': self.datetime_from_timestamps(self.trace_route_results[i]["ts"]),
+                        'layer3_route': route['domains'],
                         'as_route': asn,
-                        'rtt': rtt}
+                        'rtt': rtt,
+                        'layer3route_asn_rtt': zip(route['domains'], asn, rtt)}
                 historical_routes.append(data)
             previous_route = route
         return historical_routes
@@ -585,66 +586,19 @@ class Traceroute(Jinja2Template):
             #print("{:4} {ip:24} {as:5} {rtt:6} {min:6} {median:6} {threshold:6} {status:7} {domain}".format(index + 1, **hop))
             print("{:4} {ip:24} {as:5} {rtt:6} {status:7} {domain}".format(index + 1, **hop))
 
-    @staticmethod
-    def __create_historical_route_html(historical_routes):
-        """
-        Creates HTML table for all historical routes found within historical_routes list
-        e.g.
-        [{'ts': timestamp1, 'layer3_route': [192.168.0.1, 192.168.0.254],
-          'as_route': ['N/A', 'N/A'], 'rtt': [0.12, 1.4] index: 12},
-         {'ts': timestamp2, 'layer3_route': [192.168.1.4, 192.168.1.254],
-          'as_route': ['N/A', 'N/A'], 'rtt': [0.13, 1.2] index: 2}]
-        :param historical_routes: list containing all different historical routes
-        :type historical_routes: list
-        :return: HTML table of of all historical routes
-        """
-        html_historical = ["<h2>Historical Routes</h2>"]
-        for h_route in historical_routes:
-            html_historical.append("<p>{ts}</p>\n"
-                                   "<table border='1'>\n"
-                                   "<tr>"
-                                   "<td>Hop</td><td>Domain</td><td>ASN</td><td>RTT (ms)</td>"
-                                   "</tr>\n".format(ts=h_route["ts"]))
-
-            historical_details = zip(h_route['layer3_route'], h_route['as_route'], h_route['rtt'])
-            for (index, hop) in enumerate(historical_details):
-                html_historical.append("<tr>"
-                                       "<td>%d</td><td>%s</td><td>%s</td><td>%s</td>"
-                                       "</tr>\n" % (index + 1, hop[0], hop[1], hop[2]))
-            html_historical.append("</table>\n")
-        return "".join(html_historical)
-
     def create_traceroute_web_page(self, historical_routes):
         """
         Creates a detailed HTML traceroute results page for the current traceroute test
         :param historical_routes:
         :return:
         """
-        html_route = []
-        html_historical = self.__create_historical_route_html(historical_routes) if historical_routes else ""
-
-        for (index, hop_stats) in enumerate(self.route_stats):
-            threshold = str(hop_stats["threshold"])
-            if hop_stats["status"] == "warn":
-                html_status = "&#10008; - WARN: Latency > " + threshold
-            elif hop_stats["status"] == "okay":
-                html_status = "&#10004; - OK"
-            else:
-                html_status = "&#10008; - UNKNOWN: " + threshold
-
-            html_hop = ("<tr><td>{index}</td><td>{domain}</td><td>{ip}</td><td>{as}</td><td>{rtt}</td><td>{min}</td>"
-                        "<td>{median}</td><td>{threshold}</td><td>{web_status}</td></tr>\n")
-            html_route.append(html_hop.format(index=index + 1, web_status=html_status, **hop_stats))
-        html_route = "".join(html_route)
-
         start_date = self.datetime_from_timestamps(self.trace_route_results[0]["ts"])
-
         return self.render_template_output(source_ip=self.source_ip,
                                            dest_ip=self.destination_ip,
                                            start_date=start_date,
                                            end_date=self.end_date,
-                                           traceroute=html_route,
-                                           historical=html_historical)
+                                           traceroute=self.route_stats,
+                                           historical_routes=historical_routes)
 
 
 class ForceGraph(DataStore):
