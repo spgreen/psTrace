@@ -6,9 +6,9 @@
     <tr>
         <th>Hop:</th>
         <th>{{ changed_route.previous_test_time }}<br>Previous Test: </th>
-        <th>RTT:</th>
+        <th>RTT (ms):</th>
         <th>{{ changed_route.current_test_time }}<br>Current Test: </th>
-        <th>RTT:</th>
+        <th>RTT (ms):</th>
     </tr>
     {%- for routes in changed_route.previous_and_current_route %}
     <tr>

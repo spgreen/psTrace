@@ -296,6 +296,7 @@ class Matrix(Jinja2Template):
 
         if not self.matrix[source][destination]["rtt"]:
             self.matrix[source][destination].update({"rtt": rtt, "fp_html": fp_html})
+        return
 
     def output(self):
         """

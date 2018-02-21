@@ -54,21 +54,21 @@
     {%- endfor %}
     </table>
     {%- if historical_routes %}
-    <h2>Historical Routes</h2>
-    {%- for historical_route in historical_routes %}
-        <p>{{ historical_route.timestamp }}</p>
-        <table border='1'>
-        <tr><td>Hop</td><td>Domain</td><td>ASN</td><td>RTT (ms)</td></tr>
-        {%- for route_details in historical_route.layer3route_asn_rtt %}
-            <tr>
-                <td>{{ loop.index }}</td>
-                <td>{{ route_details[0] }}</td>
-                <td>{{ route_details[1] }}</td>
-                <td>{{ route_details[2] }}</td>
-            <tr>
+        <h2>Historical Routes</h2>
+        {%- for historical_route in historical_routes %}
+            <p>{{ historical_route.timestamp }}</p>
+            <table border='1'>
+            <tr><td>Hop</td><td>Domain</td><td>ASN</td><td>RTT (ms)</td></tr>
+            {%- for route_details in historical_route.layer3route_asn_rtt %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ route_details[0] }}</td>
+                    <td>{{ route_details[1] }}</td>
+                    <td>{{ route_details[2] }}</td>
+                <tr>
+            {%- endfor %}
+            </table>
         {%- endfor %}
-        </table>
-    {%- endfor %}
     {%- endif %}
     <br>
     <hr>
