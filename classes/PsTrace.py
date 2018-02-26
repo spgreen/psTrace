@@ -356,14 +356,16 @@ class Traceroute(Jinja2Template):
         :param traceroute_test_data: traceroute information gathered from the main perfSONAR query
         """
         Jinja2Template.__init__(self, jinja_template_file_path)
-        self.route_stats = []
         self.different_route_index = set()
-
-        self.source_ip = traceroute_test_data['source']
-        self.destination_ip = traceroute_test_data['destination']
         self.trace_route_results = json_loader_saver.retrieve_json_from_url(traceroute_test_data['api'])
         self.latest_trace_route = self.trace_route_results[-1]
-        self.end_date = self.datetime_from_timestamps(self.latest_trace_route["ts"])
+        end_date = self.datetime_from_timestamps(self.latest_trace_route["ts"])
+        self.information = {'source_ip': traceroute_test_data['source'],
+                            'destination_ip': traceroute_test_data['destination'],
+                            'source_domain': traceroute_test_data['source_domain'],
+                            'destination_domain': traceroute_test_data['destination_domain'],
+                            'route_stats': [],
+                            'test_time': end_date}
 
     @staticmethod
     def __tidy_route_slice(route):
@@ -404,7 +406,7 @@ class Traceroute(Jinja2Template):
                 domains.append(hop["ip"])
                 ip_addresses.append(hop["ip"])
             else:
-                null_tag = "null tag:%s_%d" % (self.destination_ip, index + 1)
+                null_tag = "null tag:%s_%d" % (self.information['destination_ip'], index + 1)
                 domains.append(null_tag)
                 ip_addresses.append(null_tag)
         slice_amount = self.__tidy_route_slice(ip_addresses)
@@ -544,8 +546,8 @@ class Traceroute(Jinja2Template):
             hop_details["domain"] = hop_domain_list[hop_index]
             hop_details["as"] = self.__retrieve_asn(self.latest_trace_route["val"][hop_index])
 
-            self.route_stats.append(hop_details)
-        return self.route_stats
+            self.information['route_stats'].append(hop_details)
+        return
 
     def historical_diff_routes(self):
         """
@@ -585,9 +587,10 @@ class Traceroute(Jinja2Template):
         Prints out all of the current route with appropriate statistics
         :return: None
         """
-        print("\nTraceroute to {ip}\n{end_date}\n".format(ip=self.destination_ip, end_date=self.end_date))
+        print("\nTraceroute to {ip}\n{end_date}\n".format(ip=self.information['destination_ip'],
+                                                          end_date=self.information['test_time']))
         print("Hop:\tIP:\t\t\tAS:   RTT: Min: Median: Threshold: Notice:\tDomain:\n")
-        for (index, hop) in enumerate(self.route_stats):
+        for (index, hop) in enumerate(self.information['route_stats']):
             #print("{:4} {ip:24} {as:5} {rtt:6} {min:6} {median:6} {threshold:6} {status:7} {domain}".format(index + 1, **hop))
             print("{:4} {ip:24} {as:5} {rtt:6} {status:7} {domain}".format(index + 1, **hop))
 
@@ -598,11 +601,11 @@ class Traceroute(Jinja2Template):
         :return:
         """
         start_date = self.datetime_from_timestamps(self.trace_route_results[0]["ts"])
-        return self.render_template_output(source_ip=self.source_ip,
-                                           dest_ip=self.destination_ip,
+        return self.render_template_output(source_ip=self.information['source_ip'],
+                                           dest_ip=self.information['destination_ip'],
                                            start_date=start_date,
-                                           end_date=self.end_date,
-                                           traceroute=self.route_stats,
+                                           end_date=self.information['test_time'],
+                                           traceroute=self.information['route_stats'],
                                            historical_routes=historical_routes)
 
 

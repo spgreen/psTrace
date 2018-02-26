@@ -80,11 +80,11 @@ def latest_route_analysis(traceroute_test_data, traceroute_matrix):
     """
     traceroute = classes.PsTrace.Traceroute(traceroute_test_data, J2_TRACEROUTE_WEB_PAGE_FP)
 
-    source_ip = traceroute.source_ip
-    destination_ip = traceroute.destination_ip
+    source_ip = traceroute.information['source_ip']
+    destination_ip = traceroute.information['destination_ip']
 
     traceroute.perform_traceroute_analysis()
-    #traceroute.latest_trace_output()
+    traceroute.latest_trace_output()
     historical_routes = traceroute.historical_diff_routes()
 
     fp_html = "{source}-to-{dest}.html".format(source=source_ip, dest=destination_ip)
@@ -95,10 +95,10 @@ def latest_route_analysis(traceroute_test_data, traceroute_matrix):
     with open(os.path.join(HTML_DIR, fp_html), "w") as html_file:
         html_file.write(traceroute.create_traceroute_web_page(historical_routes))
 
-    traceroute_rtt = traceroute.route_stats[-1]["rtt"]
+    traceroute_rtt = traceroute.information['route_stats'][-1]["rtt"]
     traceroute_matrix.update_matrix(source=source_ip, destination=destination_ip, rtt=traceroute_rtt, fp_html=fp_html)
 
-    return traceroute.end_date, traceroute.route_stats
+    return traceroute.information
 
 
 def main(perfsonar_ma_url, time_period):
@@ -133,29 +133,24 @@ def main(perfsonar_ma_url, time_period):
 
     # Computes the trace route data for all tests found within the perfSONAR MA
     for traceroute in traceroute_metadata:
-        source_ip, destination_ip = traceroute.get("source"), traceroute.get("destination")
-        source_domain, destination_domain = rdns_query(source_ip, destination_ip)
         try:
-            test_time, route_stats = latest_route_analysis(traceroute, traceroute_matrix)
+            test_information = latest_route_analysis(traceroute, traceroute_matrix)
         except HTTPError as e:
             print(e, "unable to retrieve traceroute data from %s" % traceroute.get("api"))
             print("Retrieving next test....")
-            traceroute_matrix.update_matrix(source=source_ip,
-                                            destination=destination_ip,
+            traceroute_matrix.update_matrix(source=traceroute.get('source'),
+                                            destination=traceroute.get('destination'),
                                             rtt=False,
                                             fp_html=False)
             continue
         # Creates the hop list from the route_stats return
-        route_from_source = [source_domain] + [hop["domain"] for hop in route_stats][:-1]
+        route_from_source = [test_information['source_domain']] + [hop["domain"] for hop in test_information['route_stats']][:-1]
         # Creates force nodes between previous and current hop
-        force_graph.create_force_nodes(route_stats, route_from_source, destination_ip)
+        force_graph.create_force_nodes(test_information['route_stats'],
+                                       route_from_source,
+                                       test_information['destination_ip'])
         # Compares current route with previous and stores current route in PREVIOUS_ROUTE_FP
-        route_compare(test_time=test_time,
-                      source_ip=source_ip,
-                      destination_ip=destination_ip,
-                      source_domain=source_domain,
-                      destination_domain=destination_domain,
-                      route_stats=route_stats)
+        route_compare(**test_information)
 
     if EMAIL_ALERTS and route_comparison.changed_routes:
         route_comparison.send_email_alert(EMAIL_TO, EMAIL_FROM, EMAIL_SUBJECT, SMTP_SERVER)
