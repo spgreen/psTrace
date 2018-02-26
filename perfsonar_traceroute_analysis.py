@@ -43,11 +43,12 @@ J2_TRACEROUTE_WEB_PAGE_FP = os.path.join(TEMPLATE_DIR, "traceroute.html.j2")
 J2_MATRIX_WEB_PAGE_FP = os.path.join(TEMPLATE_DIR, "matrix.html.j2")
 
 
-def acquire_traceroute_tests(ps_node_url, test_time_range=2400):
+def acquire_traceroute_tests(ps_node_url, rdns_query, test_time_range=2400):
     """
     Acquires all recent traceroute results from a PerfSONAR Measurement Archive
     :param ps_node_url: either URL such without http(s):// or IP address. e.g. ps_ma.net.zz or 192.168.0.1
     :param test_time_range: time in seconds
+    :param rdns_query: Reverse DNS function
     :return: 
     """
     if not isinstance(test_time_range, int):
@@ -63,7 +64,9 @@ def acquire_traceroute_tests(ps_node_url, test_time_range=2400):
                 url.netloc, url.path, test_time_range)
             data_list.append({'api': api_key,
                               'source': singular_test['source'],
-                              'destination': singular_test["destination"]})
+                              'destination': singular_test["destination"],
+                              'source_domain': rdns_query(singular_test['source']),
+                              'destination_domain': rdns_query(singular_test["destination"])})
 
     return data_list
 
@@ -81,7 +84,7 @@ def latest_route_analysis(traceroute_test_data, traceroute_matrix):
     destination_ip = traceroute.destination_ip
 
     traceroute.perform_traceroute_analysis()
-    traceroute.latest_trace_output()
+    #traceroute.latest_trace_output()
     historical_routes = traceroute.historical_diff_routes()
 
     fp_html = "{source}-to-{dest}.html".format(source=source_ip, dest=destination_ip)
@@ -116,7 +119,9 @@ def main(perfsonar_ma_url, time_period):
     print("Acquiring traceroute tests... ", end="")
 
     try:
-        traceroute_metadata = acquire_traceroute_tests(perfsonar_ma_url, test_time_range=time_period)
+        traceroute_metadata = acquire_traceroute_tests(ps_node_url=perfsonar_ma_url,
+                                                       rdns_query=rdns_query,
+                                                       test_time_range=time_period)
         print("%d test(s) received!" % len(traceroute_metadata))
     except HTTPError as e:
         print("%s - Unable to retrieve perfSONAR traceroute data from %s" % (e, perfsonar_ma_url))

@@ -273,7 +273,7 @@ class Matrix(Jinja2Template):
 
         # Creates the destination information dict for all matrix sources to all destinations.
         matrix = {src: {dst: {"rtt": "", "fp_html": ""} for dst in self.endpoints} for src in source_ip_addresses}
-        return self.sort_dictionary_by_key(matrix)
+        return collections.OrderedDict(sorted(matrix.items(), key=lambda i: i[0]))
 
     def update_matrix(self, source, destination, rtt, fp_html):
         """
@@ -304,16 +304,6 @@ class Matrix(Jinja2Template):
         """
         return self.matrix
 
-    @staticmethod
-    def sort_dictionary_by_key(unsorted_dictionary):
-        """
-        Sorts a dictionary object by its first key
-        :param unsorted_dictionary: any vanilla dictionary
-        :type unsorted_dictionary: dict
-        :return: sorted dictionary by IP address
-        """
-        return collections.OrderedDict(sorted(unsorted_dictionary.items(), key=lambda i: i[0]))
-
     def create_matrix_web_page(self, date_time, rdns_query):
         """
         Creates the matrix trace route HTML table and renders the complete web page
@@ -330,12 +320,14 @@ class Matrix(Jinja2Template):
         append_table_contents = table_contents.append
         # Creates the HTML table header
         for endpoint in self.endpoints:
-            append_table_header("<td><div><span>%s</span></div></td>" % rdns_query(endpoint))
+            label = self._matrix_header_label(endpoint, rdns_query(endpoint))
+            append_table_header("<td><div><span>%s</span></div></td>" % label)
         append_table_header("</tr>\n")
 
         # Create the matrix contents as a HTML table
         for source in self.matrix:
-            append_table_contents("<tr><td>%s</td>" % rdns_query(source))
+            label = self._matrix_header_label(source, rdns_query(source))
+            append_table_contents("<tr><td>%s</td>" % label)
             for endpoint in self.endpoints:
                 append_table_contents('<td><a href="{fp_html}">{rtt}</a></td>'
                                       .format(**self.matrix[source][endpoint]))
@@ -344,6 +336,18 @@ class Matrix(Jinja2Template):
         matrix_table = "".join(table_header + table_contents)
 
         return self.render_template_output(matrix=matrix_table, end_date=date_time)
+
+    @staticmethod
+    def _matrix_header_label(ip, domain):
+        """
+        Returns a domain name with IPv6 tagged to the end if the IP address is IPv6 otherwise it
+        returns just the domain name.
+        :param ip: IP Address
+        :param domain: Domain name address
+        :return: str
+        """
+        ip_version = ipaddress.ip_address(ip).version
+        return " ".join([domain, '(IPv6)']) if ip_version is 6 else domain
 
 
 class Traceroute(Jinja2Template):
