@@ -165,30 +165,30 @@ class RouteComparison(DataStore, Jinja2Template):
         current_route = {'test_time': test_time, 'route_info': stats}
         try:
             previous = [hop["domain"] for hop in self.data_store[source_ip][destination_ip]['route_info']]
-            current = [hop["domain"] for hop in route_stats]
-
-            if self.difference_check_with_threshold(previous, current):
-                print("Route Changed")
-                previous_route = self.data_store[source_ip][destination_ip]
-                # Update current route into data_store dictionary to prevent update by reference
-                self.data_store[source_ip][destination_ip] = current_route
-
-                routes = itertools.zip_longest(previous_route['route_info'],
-                                               current_route['route_info'],
-                                               fillvalue={"domain": "",
-                                                          "as": "",
-                                                          "rtt": ""})
-
-                self.changed_routes.append({'source_domain': source_domain,
-                                            'destination_domain': destination_domain,
-                                            'previous_test_time': previous_route['test_time'],
-                                            'current_test_time': test_time,
-                                            'previous_and_current_route': routes})
         except KeyError:
-            try:
-                self.data_store[source_ip].update({destination_ip: current_route})
-            except KeyError:
-                self.data_store.update({source_ip: {destination_ip: current_route}})
+            self.data_store.setdefault(source_ip, {}).update({destination_ip: current_route})
+            return
+
+        current = [hop["domain"] for hop in route_stats]
+
+        if self.difference_check_with_threshold(previous, current):
+            print("Route Changed")
+            previous_route = self.data_store[source_ip][destination_ip]
+            # Update current route into data_store dictionary to prevent update by reference
+            self.data_store.setdefault(source_ip, {}).update({destination_ip: current_route})
+
+            routes = itertools.zip_longest(previous_route['route_info'],
+                                           current_route['route_info'],
+                                           fillvalue={"domain": "",
+                                                      "as": "",
+                                                      "rtt": ""})
+
+            self.changed_routes.append({'source_domain': source_domain,
+                                        'destination_domain': destination_domain,
+                                        'previous_test_time': previous_route['test_time'],
+                                        'current_test_time': test_time,
+                                        'previous_and_current_route': routes})
+        return
 
     def difference_check_with_threshold(self, list_a, list_b):
         """
