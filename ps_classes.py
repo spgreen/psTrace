@@ -128,7 +128,7 @@ class PsTrace:
                                                 route_from_source,
                                                 traceroute.information['destination_ip'])
             # Compares current route with previous and stores current route in PREVIOUS_ROUTE_FP
-            self.route_comparison.compare_and_update(**traceroute.information)
+            self.route_comparison.check_changes(traceroute.information)
 
 
 class RouteComparison(DataStore, Jinja2Template):
@@ -146,6 +146,62 @@ class RouteComparison(DataStore, Jinja2Template):
         DataStore.__init__(self)
         Jinja2Template.__init__(self, jinja_template_file_path)
         self.threshold = threshold
+
+    @staticmethod
+    def compare_three_lists(first, second, third):
+        if first != second == third:
+            return 'CHANGE'
+        elif first != second != third:
+            return 'FLAP'
+        return
+
+    def check_changes(self, traceroute):
+        source_ip, destination_ip = traceroute['source_ip'], traceroute['destination_ip']
+        current_route = {'test_time': traceroute['test_time'],
+                         'route_stats': traceroute['route_stats']}
+        try:
+            first_historical_route = self.data_store[source_ip][destination_ip]['first_result']
+        except KeyError:
+            self.data_store.setdefault(source_ip, {}).update({destination_ip: {'first_result': current_route,
+                                                                               'flapping': 0}})
+            return
+        try:
+            second_historical_route = self.data_store[source_ip][destination_ip]['second_result']
+        except KeyError:
+            self.data_store[source_ip][destination_ip].update({'second_result': current_route})
+            return
+
+        historical_data = self.data_store[source_ip][destination_ip]
+        flap_tag = historical_data.get('flapping')
+
+        second_ip_route = [hop.get('ip')for hop in second_historical_route['route_stats']]
+        first_ip_route = [hop.get('ip')for hop in first_historical_route['route_stats']]
+        current_ip_route = [hop.get('ip') for hop in traceroute['route_stats']]
+
+        status = self.compare_three_lists(second_ip_route, first_ip_route, current_ip_route)
+        if status:
+            print(status)
+            previous_route = second_historical_route
+
+            historical_data.update({'first_result': current_route,
+                                    'second_result': first_historical_route})
+
+            if 'FLAP' in status and not flap_tag:
+                self.data_store[source_ip][destination_ip]['flapping'] = 1
+                previous_route = first_historical_route
+            elif 'FLAP' in status and flap_tag:
+                return
+            elif 'CHANGE' in status:
+                if flap_tag:
+                    historical_data['flapping'] = 0
+
+            routes = itertools.zip_longest(previous_route['route_stats'], traceroute['route_stats'])
+            self.changed_routes.append({'source_domain': traceroute['source_domain'],
+                                        'destination_domain': traceroute['destination_domain'],
+                                        'previous_test_time': previous_route['test_time'],
+                                        'current_test_time': traceroute['test_time'],
+                                        'previous_and_current_route': routes})
+        return
 
     def compare_and_update(self, source_ip, source_domain, destination_ip, destination_domain, route_stats, test_time):
         """
