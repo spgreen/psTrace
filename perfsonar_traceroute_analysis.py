@@ -118,6 +118,7 @@ def main(perfsonar_ma_url, time_period):
         objects.save_as_json_file(file_path)
     print("Done")
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("perfsonar_base", help="IP or base domain of the PerfSONAR MA")

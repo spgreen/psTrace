@@ -221,7 +221,7 @@ class RouteComparison(DataStore, Jinja2Template):
         if 'FLAP' in status and not flap_tag:
             self.data_store[source_ip][destination_ip]['flapping'] = 1
             previous_route = second_historical_route
-        elif 'FLAP' in status and flap_tag:
+        elif ('FLAP' in status and flap_tag) or ('WARN' in status):
             return
         elif 'CHANGE' in status:
             historical_data['flapping'] = 0
@@ -231,7 +231,8 @@ class RouteComparison(DataStore, Jinja2Template):
                                     'destination_domain': traceroute['destination_domain'],
                                     'previous_test_time': previous_route['test_time'],
                                     'current_test_time': traceroute['test_time'],
-                                    'previous_and_current_route': routes})
+                                    'previous_and_current_route': routes,
+                                    'status': status})
         return
 
     def compare_and_update(self, source_ip, source_domain, destination_ip, destination_domain, route_stats, test_time):

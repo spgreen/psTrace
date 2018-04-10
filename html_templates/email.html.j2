@@ -1,7 +1,7 @@
 <p>Dear Network Admin,</p>
 <p>The following routes have changed: </p>
 {%- for changed_route in changed_routes %}
-<h3>From {{ changed_route.source_domain }} to {{ changed_route.destination_domain }}</h3>
+<h3>{{ changed_route.status }}: From {{ changed_route.source_domain }} to {{ changed_route.destination_domain }}</h3>
 <table border=1>
     <tr>
         <th>Hop:</th>
