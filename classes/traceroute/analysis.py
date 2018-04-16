@@ -113,8 +113,8 @@ class TracerouteAnalysis(Jinja2Template):
         :param number_list:
         :return:
         """
-        number_list_size = len(number_list)
         try:
+            number_list_size = len(number_list)
             number_list = sorted(number_list)
         except TypeError:
             print("Error: Invalid list elements found")
@@ -153,6 +153,8 @@ class TracerouteAnalysis(Jinja2Template):
         :param hop_ip:
         :return:
         """
+        if "null tag:" in hop_ip:
+            return
         rtt = []
         rtt_append = rtt.append
         different_route_add = self.different_route_index.add
@@ -167,6 +169,35 @@ class TracerouteAnalysis(Jinja2Template):
                 continue
         return rtt
 
+    def _hop_information(self, hop_number, hop_ip_address):
+        """
+        Retrieves statistical information for the specified hop and returns
+        a dictionary of said statistics.
+        :param hop_number: hop index
+        :param hop_ip_address: hop index ip address
+        :return:
+        """
+        # Goes through every test comparing the IP occurring at the same hop_index of the latest trace route
+        rtt = self.retrieve_all_rtts_for_hop(hop_index=hop_number, hop_ip=hop_ip_address)
+
+        hop_details = self.five_number_summary(rtt)
+        hop_details["rtt"] = "unknown"
+        status = "unknown"
+
+        if rtt:
+            # Save last value of the rtt as it is from the latest trace route; save empty value if rtt does not exist
+            most_recent_rtt = round(rtt[-1], 2)
+            hop_details["rtt"] = most_recent_rtt
+            # rounds all hop_detail items to 2 d.p.s
+            hop_details = {key: round(float(value), 2) if value else most_recent_rtt
+                           for key, value in hop_details.items()}
+            status = "warn" if hop_details["rtt"] > hop_details["threshold"] else "okay"
+
+        hop_details["status"] = status
+        hop_details["ip"] = hop_ip_address
+        hop_details["as"] = self.__retrieve_asn(self.latest_trace_route["val"][hop_number])
+        return hop_details
+
     def perform_traceroute_analysis(self):
         """
         Performs latest_route_analysis on the most recent traceroute against previous traceroute test
@@ -178,30 +209,8 @@ class TracerouteAnalysis(Jinja2Template):
         hop_domain_list = hop_ip_and_domain_list["domains"]
 
         for (hop_index, current_hop_ip) in enumerate(hop_ip_list):
-            # Goes through every test comparing the IP occurring at the same hop_index of the latest trace route
-            rtt = []
-            if "null tag:" not in current_hop_ip:
-                rtt = self.retrieve_all_rtts_for_hop(hop_index=hop_index, hop_ip=current_hop_ip)
-
-            hop_details = self.five_number_summary(rtt)
-            # Save last value of the rtt as it is from the latest trace route; save empty value if rtt does not exist
-            hop_details["rtt"] = round(rtt[-1], 2) if rtt else ""
-
-            if len(rtt) > 1 and rtt:
-                # rounds all hop_details to 2 d.p.s
-                hop_details = {key: round(float(hop_details[key]), 2)for key in hop_details}
-                status = "warn" if hop_details["rtt"] > hop_details["threshold"] else "okay"
-            elif len(rtt) == 1 and rtt:
-                status = "unknown"
-            else:
-                hop_details["rtt"] = "unknown"
-                status = "unknown"
-
-            hop_details["status"] = status
-            hop_details["ip"] = current_hop_ip
+            hop_details = self._hop_information(hop_index, current_hop_ip)
             hop_details["domain"] = hop_domain_list[hop_index]
-            hop_details["as"] = self.__retrieve_asn(self.latest_trace_route["val"][hop_index])
-
             self.information['route_stats'].append(hop_details)
         return
 
