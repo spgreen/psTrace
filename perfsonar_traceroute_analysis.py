@@ -7,8 +7,8 @@ import urllib.parse
 
 from urllib.error import HTTPError
 
-from ps_classes import ReverseDNS
-from ps_classes import PsTrace
+from classes.rdns import ReverseDNS
+from classes.pstrace import PsTrace
 from lib import json_loader_saver
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
