@@ -50,6 +50,39 @@ class RouteComparison(DataStore, Jinja2Template):
             return 'WARN'
         return
 
+    def _retrieve_historical_route_data(self, source_ip, destination_ip, current_route):
+        """
+        Retrieves the last two historical tests from the historical data store (self.data_store).
+        If neither the first nor second test exist, the function will update the data store with
+        the current route.
+        :param source_ip: Source IP address of the current traceroute test
+        :param destination_ip: Destination IP address of the current traceroute test
+        :param current_route: Route statistics of the current the traceroute test
+        :return: None or first_historical_route, second_historical_route
+        """
+        try:
+            first_historical_route = self.data_store[source_ip][destination_ip]['first_result']
+        except KeyError:
+            self.data_store.setdefault(source_ip, {}).update({destination_ip: {'first_result': current_route,
+                                                                               'flapping': 0}})
+            return
+        try:
+            second_historical_route = self.data_store[source_ip][destination_ip]['second_result']
+        except KeyError:
+            self.data_store[source_ip][destination_ip].update({'second_result': current_route})
+            return
+        return first_historical_route, second_historical_route
+
+    @staticmethod
+    def _retrieve_ip_route_from_route_data(*args):
+        """
+        Retrieves the IP address route from multiple sets of route data within *args
+        and returns it all IP routes within a nested list.
+        :param args: traceroute data in Traceroute.information form
+        :return: Nested list of each IP route found in *args
+        """
+        return [[hop.get('ip')for hop in route['route_stats']] for route in args]
+
     def check_changes(self, traceroute):
         """
         Compares the current route with the last two significant traceroute results.
@@ -63,41 +96,30 @@ class RouteComparison(DataStore, Jinja2Template):
         source_ip, destination_ip = traceroute['source_ip'], traceroute['destination_ip']
         current_route = {'test_time': traceroute['test_time'],
                          'route_stats': traceroute['route_stats']}
-        try:
-            first_historical_route = self.data_store[source_ip][destination_ip]['first_result']
-        except KeyError:
-            self.data_store.setdefault(source_ip, {}).update({destination_ip: {'first_result': current_route,
-                                                                               'flapping': 0}})
+
+        historical_routes = self._retrieve_historical_route_data(source_ip, destination_ip, current_route)
+        if not historical_routes:
             return
-        try:
-            second_historical_route = self.data_store[source_ip][destination_ip]['second_result']
-        except KeyError:
-            self.data_store[source_ip][destination_ip].update({'second_result': current_route})
-            return
+        first_route, second_route = historical_routes[0], historical_routes[1]
 
-        historical_data = self.data_store[source_ip][destination_ip]
-        flap_tag = historical_data.get('flapping')
-        first_ip_route = [hop.get('ip')for hop in first_historical_route['route_stats']]
-        second_ip_route = [hop.get('ip')for hop in second_historical_route['route_stats']]
-        current_ip_route = [hop.get('ip') for hop in traceroute['route_stats']]
-
-        status = self.compare_three_objects(first_ip_route, second_ip_route, current_ip_route)
-
+        flap_tag = self.data_store[source_ip][destination_ip].get('flapping')
+        ip_routes = self._retrieve_ip_route_from_route_data(first_route, second_route, current_route)
+        status = self.compare_three_objects(ip_routes[0], ip_routes[1], ip_routes[2])
         if status is None:
             return
 
         print(status)
-        previous_route = first_historical_route
-        self.data_store[source_ip][destination_ip].update({'first_result': second_historical_route,
+        previous_route = first_route
+        self.data_store[source_ip][destination_ip].update({'first_result': second_route,
                                                            'second_result': current_route})
 
         if 'FLAP' in status and not flap_tag:
             self.data_store[source_ip][destination_ip]['flapping'] = 1
-            previous_route = second_historical_route
+            previous_route = second_route
         elif ('FLAP' in status and flap_tag) or ('WARN' in status):
             return
         elif 'CHANGE' in status:
-            historical_data['flapping'] = 0
+            self.data_store[source_ip][destination_ip]['flapping'] = 0
 
         routes = itertools.zip_longest(previous_route['route_stats'], traceroute['route_stats'])
         self.changed_routes.append({'source_domain': traceroute['source_domain'],
