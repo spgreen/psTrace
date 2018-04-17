@@ -18,6 +18,8 @@ class RouteComparison(DataStore, Jinja2Template):
     def __init__(self, threshold, jinja_template_file_path):
         DataStore.__init__(self)
         Jinja2Template.__init__(self, jinja_template_file_path)
+        if threshold > 1.0:
+            raise ValueError('Threshold can not be greater than 1.0')
         self.threshold = threshold
 
     @staticmethod
@@ -83,6 +85,27 @@ class RouteComparison(DataStore, Jinja2Template):
         """
         return [[hop.get('ip')for hop in route['route_stats']] for route in args]
 
+    def _update_email_alerts_based_on_threshold(self, traceroute, previous_route, status):
+        """
+        Updates the change_routes list used for email notifications with traceroute test information
+        if the current and previous routes have changed by a specified threshold set in the config.ini
+        file.
+        :param traceroute: traceroute data in Traceroute.information form
+        :param previous_route: traceroute data in Traceroute.information form
+        :param status: indicates the change that has occurred between the previous and current test
+        :return: None
+        """
+        routes = itertools.zip_longest(previous_route['route_stats'], traceroute['route_stats'])
+        previous_ip_route, current_ip_route = self._retrieve_ip_route_from_route_data(previous_route, traceroute)
+        if self.difference_check_with_threshold(previous_ip_route, current_ip_route):
+            self.changed_routes.append({'source_domain': traceroute['source_domain'],
+                                        'destination_domain': traceroute['destination_domain'],
+                                        'previous_test_time': previous_route['test_time'],
+                                        'current_test_time': traceroute['test_time'],
+                                        'previous_and_current_route': routes,
+                                        'status': status})
+        return
+
     def check_changes(self, traceroute):
         """
         Compares the current route with the last two significant traceroute results.
@@ -112,7 +135,6 @@ class RouteComparison(DataStore, Jinja2Template):
         previous_route = first_route
         self.data_store[source_ip][destination_ip].update({'first_result': second_route,
                                                            'second_result': current_route})
-
         if 'FLAP' in status:
             if flap_tag:
                 return
@@ -122,14 +144,7 @@ class RouteComparison(DataStore, Jinja2Template):
             return
         elif 'CHANGE' in status:
             self.data_store[source_ip][destination_ip]['flapping'] = 0
-
-        routes = itertools.zip_longest(previous_route['route_stats'], traceroute['route_stats'])
-        self.changed_routes.append({'source_domain': traceroute['source_domain'],
-                                    'destination_domain': traceroute['destination_domain'],
-                                    'previous_test_time': previous_route['test_time'],
-                                    'current_test_time': traceroute['test_time'],
-                                    'previous_and_current_route': routes,
-                                    'status': status})
+        self._update_email_alerts_based_on_threshold(traceroute, previous_route, status)
         return
 
     def compare_and_update(self, source_ip, source_domain, destination_ip, destination_domain, route_stats, test_time):
@@ -177,28 +192,18 @@ class RouteComparison(DataStore, Jinja2Template):
 
     def difference_check_with_threshold(self, list_a, list_b):
         """
-        Performs a comparison check between two lists. It also checks for false positives when one route
-        reaches all but the end node
-        :param list_a:
-        :param list_b:
+        Performs a comparison check between two lists and checks whether the percentage difference
+        between the lists exceed the specified threshold in config.ini.
+        :param list_a: list to be compared
+        :param list_b: list to be compared
         :return: True or False
         """
-        if self.threshold > 1.0:
-            raise ValueError('Threshold can not be greater than 1.0')
-
-        if isinstance(list_a, int):
-            list_a = [list_a]
-        if isinstance(list_b, int):
-            list_b = [list_b]
-
         combined_list = list(itertools.zip_longest(list_a, list_b))
         combined_list_length = len(combined_list)
         number_of_differences = len([i for i, j in combined_list if i != j])
 
         percentage_difference = number_of_differences / combined_list_length
-        if not percentage_difference and not self.threshold:
-            return False
-        elif percentage_difference >= self.threshold:
+        if percentage_difference > self.threshold:
             return True
         return False
 
