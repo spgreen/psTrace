@@ -90,8 +90,8 @@ class RouteComparison(DataStore, Jinja2Template):
         needed if an email notification for a route flap/change occurs.
         If no previous routes are found, the current route will be added to the
         data_store dictionary
-        :param traceroute:
-        :return:
+        :param traceroute: Traceroute data in the form of Traceroute.information
+        :return: None
         """
         source_ip, destination_ip = traceroute['source_ip'], traceroute['destination_ip']
         current_route = {'test_time': traceroute['test_time'],
@@ -113,10 +113,12 @@ class RouteComparison(DataStore, Jinja2Template):
         self.data_store[source_ip][destination_ip].update({'first_result': second_route,
                                                            'second_result': current_route})
 
-        if 'FLAP' in status and not flap_tag:
+        if 'FLAP' in status:
+            if flap_tag:
+                return
             self.data_store[source_ip][destination_ip]['flapping'] = 1
             previous_route = second_route
-        elif ('FLAP' in status and flap_tag) or ('WARN' in status):
+        elif 'WARN' in status:
             return
         elif 'CHANGE' in status:
             self.data_store[source_ip][destination_ip]['flapping'] = 0
