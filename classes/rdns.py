@@ -1,7 +1,25 @@
+#!/usr/bin/python3
+"""Provides the ReverseDNS class for reverse DNS lookups
+
+Performs IP address to domain name lookups from the systems DNS server
+and stores the results in JSON format to allow for dictionary lookups.
+If previous results are loaded in, it will perform the lookup
+on the dictionary corresponding to the JSON file first
+before querying the DNS server.
+"""
+
 import ipaddress
 import socket
-
 from classes.base import DataStore
+
+__author__ = "Simon Peter Green"
+__copyright__ = "Copyright (c) 2017 spgreen"
+__credits__ = []
+__license__ = "MIT"
+__version__ = "0.5"
+__maintainer__ = "Simon Peter Green"
+__email__ = "simonpetergreen@singaren.net.sg"
+__status__ = "Development"
 
 
 class ReverseDNS(DataStore):

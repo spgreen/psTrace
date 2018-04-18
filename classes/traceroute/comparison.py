@@ -1,15 +1,30 @@
-import itertools
+#!/usr/bin/python3
+"""Provides the RouteComparison class for historical traceroute comparison.
 
+Performs a couple of comparison tests between historical and current routes to see
+whether an email alert needs to be sent out due to a significant route change.
+"""
+
+import itertools
 from classes.base import DataStore, Jinja2Template
 from lib import email
+
+__author__ = "Simon Peter Green"
+__copyright__ = "Copyright (c) 2017 spgreen"
+__credits__ = []
+__license__ = "MIT"
+__version__ = "0.5"
+__maintainer__ = "Simon Peter Green"
+__email__ = "simonpetergreen@singaren.net.sg"
+__status__ = "Development"
 
 
 class RouteComparison(DataStore, Jinja2Template):
     """
-    Used for comparing two traceroute tests. If current route is different
-     to the previous test, the new route will be saved and a HTML body
+     Used for comparing between historical and current traceroute tests.
+     If current route is different to the previous test, the new route will be saved and a HTML body
      comparing the two routes will be generated to be sent off as an HTML email.
-    The class calls on the jinja_renderer function to load Jinja2 templates
+     The class calls on the jinja_renderer function to load Jinja2 templates
      used for the email message and the email function to send said generated
      HTML email message.
     """
@@ -145,49 +160,6 @@ class RouteComparison(DataStore, Jinja2Template):
         elif 'CHANGE' in status:
             self.data_store[source_ip][destination_ip]['flapping'] = 0
         self._update_email_alerts_based_on_threshold(traceroute, previous_route, status)
-        return
-
-    def compare_and_update(self, source_ip, source_domain, destination_ip, destination_domain, route_stats, test_time):
-        """
-        Compares the current route with routes from when the previous test ran.
-        If no previous routes are found, the current route will be appended to the
-        data_store dictionary
-        :param source_ip:
-        :param source_domain:
-        :param destination_ip:
-        :param destination_domain:
-        :param route_stats:
-        :param test_time:
-        :return:
-        """
-
-        stats = [{"domain": hop["domain"], "as": hop["as"], "rtt": hop["rtt"]} for hop in route_stats]
-        current_route = {'test_time': test_time, 'route_info': stats}
-        try:
-            previous = [hop["domain"] for hop in self.data_store[source_ip][destination_ip]['route_info']]
-        except KeyError:
-            self.data_store.setdefault(source_ip, {}).update({destination_ip: current_route})
-            return
-
-        current = [hop["domain"] for hop in route_stats]
-
-        if self.difference_check_with_threshold(previous, current):
-            print("Route Changed")
-            previous_route = self.data_store[source_ip][destination_ip]
-            # Update current route into data_store dictionary to prevent update by reference
-            self.data_store.setdefault(source_ip, {}).update({destination_ip: current_route})
-
-            routes = itertools.zip_longest(previous_route['route_info'],
-                                           current_route['route_info'],
-                                           fillvalue={"domain": "",
-                                                      "as": "",
-                                                      "rtt": ""})
-
-            self.changed_routes.append({'source_domain': source_domain,
-                                        'destination_domain': destination_domain,
-                                        'previous_test_time': previous_route['test_time'],
-                                        'current_test_time': test_time,
-                                        'previous_and_current_route': routes})
         return
 
     def difference_check_with_threshold(self, list_a, list_b):
