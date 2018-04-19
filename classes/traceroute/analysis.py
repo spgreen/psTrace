@@ -249,7 +249,7 @@ class TracerouteAnalysis(Jinja2Template):
             asn = [self._retrieve_asn(hop) for hop in self.trace_route_results[i]["val"]]
             rtt = [round(hop['rtt'], 2) if 'rtt' in hop else "N/A" for hop in self.trace_route_results[i]["val"]]
 
-            if (i+1 not in sorted_diff_route_index) or (previous_route != route) or (i == 0):
+            if previous_route != route:
                 data = {'index': i,
                         'timestamp': self.datetime_from_timestamps(self.trace_route_results[i]["ts"]),
                         'layer3_route': route['domains'],
