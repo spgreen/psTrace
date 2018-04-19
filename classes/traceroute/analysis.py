@@ -1,14 +1,30 @@
-import itertools
+#!/usr/bin/python3
+"""Provides the TracerouteAnalysis class for traceroute analysis.
+
+Acquires, cleans and analyses PerfSONAR traceroute test data from a PerfSONAR Measurement Archive (MA).
+It also provides an option to output the results via the console or as a web page.
+"""
+
 import statistics
 import time
 
 from classes.base import Jinja2Template
 from lib import json_loader_saver
 
+__author__ = "Simon Peter Green"
+__copyright__ = "Copyright (c) 2017 spgreen"
+__credits__ = []
+__license__ = "MIT"
+__version__ = "0.5"
+__maintainer__ = "Simon Peter Green"
+__email__ = "simonpetergreen@singaren.net.sg"
+__status__ = "Development"
+
 
 class TracerouteAnalysis(Jinja2Template):
     def __init__(self, traceroute_test_data, jinja_template_file_path):
         """
+        Performs initial retrieval of traceroute data and variables needed for analysis.
         :param traceroute_test_data: traceroute information gathered from the main perfSONAR query
         """
         Jinja2Template.__init__(self, jinja_template_file_path)
@@ -24,29 +40,26 @@ class TracerouteAnalysis(Jinja2Template):
                             'test_time': end_date}
 
     @staticmethod
-    def __tidy_route_slice(route):
+    def _tidy_route_slice(route):
         """
         Determines whether a route is able to be tidied up in the case of trailing timeouts i.e. 'null tags:'.
-        Returns the slice needed to tidy set route but does not apply said slice to route.
+        Returns the slice needed to tidy the traceroute.
         :param route: traceroute route
         :return: None or slice to be performed on route
         """
-        null_indices = [index for index, hop in enumerate(route) if 'null tag' in hop]
-        consecutive_null_ranges = []
-        if not null_indices:
+        if 'null tag' not in route[-1]:
             return
-        if "null tag" in route[-1]:
-            for k, g in itertools.groupby(enumerate(null_indices), lambda x: x[0] - x[1]):
-                group = list(g)
-                if len(group) > 1:
-                    consecutive_null_ranges.append((group[0][1], group[-1][1]))
-                else:
-                    consecutive_null_ranges.append(group[0][1])
-        if consecutive_null_ranges and isinstance(consecutive_null_ranges[-1], tuple):
-            return slice(0, consecutive_null_ranges[-1][0] + 1)
+        route_reversed = reversed(route)
+        count = -1
+        for hop in route_reversed:
+            if 'null tag' not in hop:
+                break
+            count += 1
+        if count > 0:
+            return slice(-count)
         return
 
-    def __generate_hop_ip_and_domain_list(self, route_test):
+    def _generate_hop_ip_and_domain_list(self, route_test):
         """
         Returns the IP address and domain address route from the traceroute test provided by route test
         :param route_test: traceroute test
@@ -65,14 +78,14 @@ class TracerouteAnalysis(Jinja2Template):
                 null_tag = "null tag:%s_%d" % (self.information['destination_ip'], index + 1)
                 domains.append(null_tag)
                 ip_addresses.append(null_tag)
-        slice_amount = self.__tidy_route_slice(ip_addresses)
+        slice_amount = self._tidy_route_slice(ip_addresses)
         if slice_amount:
             domains = domains[slice_amount]
             ip_addresses = ip_addresses[slice_amount]
         return {"domains": domains, "ip_addresses": ip_addresses}
 
     @staticmethod
-    def __retrieve_asn(ps_hop_dictionary):
+    def _retrieve_asn(ps_hop_dictionary):
         """
         Retrieves Autonomous System Numbers from a PerfSONAR hop details dictionary.
         ps_hop_dictionary example:
@@ -195,7 +208,7 @@ class TracerouteAnalysis(Jinja2Template):
 
         hop_details["status"] = status
         hop_details["ip"] = hop_ip_address
-        hop_details["as"] = self.__retrieve_asn(self.latest_trace_route["val"][hop_number])
+        hop_details["as"] = self._retrieve_asn(self.latest_trace_route["val"][hop_number])
         return hop_details
 
     def perform_traceroute_analysis(self):
@@ -204,7 +217,7 @@ class TracerouteAnalysis(Jinja2Template):
         :return: route statistics for the most recent traceroute
         """
         # Retrieves latest route from self.trace_route_results
-        hop_ip_and_domain_list = self.__generate_hop_ip_and_domain_list(self.latest_trace_route)
+        hop_ip_and_domain_list = self._generate_hop_ip_and_domain_list(self.latest_trace_route)
         hop_ip_list = hop_ip_and_domain_list["ip_addresses"]
         hop_domain_list = hop_ip_and_domain_list["domains"]
 
@@ -232,8 +245,8 @@ class TracerouteAnalysis(Jinja2Template):
         # Retrieves all of the different routes that occurred during the data period and stores the routes within the
         # historical_routes list
         for i in sorted_diff_route_index:
-            route = self.__generate_hop_ip_and_domain_list(self.trace_route_results[i])
-            asn = [self.__retrieve_asn(hop) for hop in self.trace_route_results[i]["val"]]
+            route = self._generate_hop_ip_and_domain_list(self.trace_route_results[i])
+            asn = [self._retrieve_asn(hop) for hop in self.trace_route_results[i]["val"]]
             rtt = [round(hop['rtt'], 2) if 'rtt' in hop else "N/A" for hop in self.trace_route_results[i]["val"]]
 
             if (i+1 not in sorted_diff_route_index) or (previous_route != route) or (i == 0):
