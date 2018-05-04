@@ -1,13 +1,26 @@
-import os.path
+#!/usr/bin/python3
+"""
+TODO: Add Description
+"""
 
+import os.path
 from classes.traceroute.comparison import RouteComparison
 from classes.matrix import Matrix, ForceGraph
+
+__author__ = "Simon Peter Green"
+__copyright__ = "Copyright (c) 2017 spgreen"
+__credits__ = []
+__license__ = "MIT"
+__version__ = "0.5"
+__maintainer__ = "Simon Peter Green"
+__email__ = "simonpetergreen@singaren.net.sg"
+__status__ = "Development"
 
 
 class PsTrace:
     def __init__(self, test_metadata, threshold, matrix_template_fp, web_template_fp, email_template_fp):
         """
-
+        TODO: Add Description
         :param test_metadata:
         :param threshold:
         :param matrix_template_fp:
@@ -20,7 +33,7 @@ class PsTrace:
 
     def analysis(self, previous_routes_fp, html_save_directory):
         """
-
+        TODO: Add Description
         :param previous_routes_fp:
         :param html_save_directory:
         :return:

@@ -1,15 +1,26 @@
 #!/usr/bin/python3
+"""
+TODO: Add Description
+"""
+
 import argparse
 import datetime
 import os.path
 import configparser
 import urllib.parse
-
 from urllib.error import HTTPError
-
 from classes.rdns import ReverseDNS
 from classes.pstrace import PsTrace
 from lib import json_loader_saver
+
+__author__ = "Simon Peter Green"
+__copyright__ = "Copyright (c) 2017 spgreen"
+__credits__ = []
+__license__ = "MIT"
+__version__ = "0.5"
+__maintainer__ = "Simon Peter Green"
+__email__ = "simonpetergreen@singaren.net.sg"
+__status__ = "Development"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -72,7 +83,7 @@ def acquire_traceroute_tests(ps_node_url, rdns_query, test_time_range=2400):
 
 def main(perfsonar_ma_url, time_period):
     """
-    PSTRACE
+    TODO: Add Description
     :param perfsonar_ma_url:
     :param time_period:
     :return:

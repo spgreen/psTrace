@@ -1,9 +1,22 @@
+#!/usr/bin/python3
+"""
+TODO: Add Description
+"""
+
 import collections
 import ipaddress
 from urllib.error import HTTPError
-
 from classes.base import Jinja2Template, DataStore
 from classes.traceroute.analysis import TracerouteAnalysis
+
+__author__ = "Simon Peter Green"
+__copyright__ = "Copyright (c) 2017 spgreen"
+__credits__ = []
+__license__ = "MIT"
+__version__ = "0.5"
+__maintainer__ = "Simon Peter Green"
+__email__ = "simonpetergreen@singaren.net.sg"
+__status__ = "Development"
 
 
 class Matrix(Jinja2Template):

@@ -1,11 +1,26 @@
+#!/usr/bin/python3
+"""
+TODO: Add Description
+"""
+
 import json
 import os.path
-
 import jinja2
+
+__author__ = "Simon Peter Green"
+__copyright__ = "Copyright (c) 2017 spgreen"
+__credits__ = []
+__license__ = "MIT"
+__version__ = "0.5"
+__maintainer__ = "Simon Peter Green"
+__email__ = "simonpetergreen@singaren.net.sg"
+__status__ = "Development"
 
 
 class Jinja2Template:
-
+    """
+    TODO: Add Description
+    """
     def __init__(self, jinja_template_file_path):
         self.jinja_template_fp = jinja_template_file_path
 
@@ -30,7 +45,9 @@ class Jinja2Template:
 
 
 class DataStore:
-
+    """
+    TODO: Add Description
+    """
     def __init__(self):
         self.data_store = {}
 
