@@ -206,12 +206,21 @@
                 })
                 .call(force.drag);
 
+            <!-- TODO: Determine a better solution instead of processing against node names twice -->
             var text = svg.append('g').selectAll('text')
                 .data(force.nodes())
                 .enter().append('text')
-                .attr('x', -40)
                 .attr('y', '.31em')
+                .attr('x', function(d) {
+                    if (d.name.includes('null tag')) {
+                        return 0
+                    }
+                    return -40
+                 })
                 .text(function(d) {
+                    if (d.name.includes('null tag')) {
+                        return '*';
+                    }
                     return d.name;
                 });
             // Use elliptical arc path segments to doubly-encode directionality.

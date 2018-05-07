@@ -42,17 +42,17 @@ class TracerouteAnalysis(Jinja2Template):
     @staticmethod
     def _tidy_route_slice(route):
         """
-        Determines whether a route is able to be tidied up in the case of trailing timeouts i.e. 'null tags:'.
+        Determines whether a route is able to be tidied up in the case of trailing timeouts i.e. '*'.
         Returns the slice needed to tidy the traceroute.
         :param route: traceroute route
         :return: None or slice to be performed on route
         """
-        if 'null tag' not in route[-1]:
+        if '*' not in route[-1]:
             return
         route_reversed = reversed(route)
         count = -1
         for hop in route_reversed:
-            if 'null tag' not in hop:
+            if '*' not in hop:
                 break
             count += 1
         if count > 0:
@@ -65,23 +65,17 @@ class TracerouteAnalysis(Jinja2Template):
         :param route_test: traceroute test
         :return:
         """
-        ip_addresses = []
-        domains = []
+        domain_and_ip_addresses = []
         for index, hop in enumerate(route_test["val"]):
             if "hostname" in hop:
-                domains.append(hop["hostname"])
-                ip_addresses.append(hop["ip"])
-            elif "ip" in hop:
-                domains.append(hop["ip"])
-                ip_addresses.append(hop["ip"])
+                domain_and_ip_addresses.append((hop['hostname'], hop['ip']))
             else:
-                null_tag = "null tag:%s_%d" % (self.information['destination_ip'], index + 1)
-                domains.append(null_tag)
-                ip_addresses.append(null_tag)
-        slice_amount = self._tidy_route_slice(ip_addresses)
+                hop_label = hop.get("ip", '*')
+                domain_and_ip_addresses.append((hop_label, hop_label))
+        slice_amount = self._tidy_route_slice(domain_and_ip_addresses)
         if slice_amount:
-            domains = domains[slice_amount]
-            ip_addresses = ip_addresses[slice_amount]
+            domain_and_ip_addresses = domain_and_ip_addresses[slice_amount]
+        domains, ip_addresses = list(zip(*domain_and_ip_addresses))
         return {"domains": domains, "ip_addresses": ip_addresses}
 
     @staticmethod
@@ -166,7 +160,7 @@ class TracerouteAnalysis(Jinja2Template):
         :param hop_ip:
         :return:
         """
-        if "null tag:" in hop_ip:
+        if "*" in hop_ip:
             return
         rtt = []
         rtt_append = rtt.append

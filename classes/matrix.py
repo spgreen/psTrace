@@ -207,7 +207,7 @@ class ForceGraph(DataStore):
         """
         raise AttributeError("'ForceGraph' object has no attribute 'update_from_json_file'")
 
-    def create_force_nodes(self, hop_details, previous_hop, destination_ip):
+    def create_force_nodes(self, hop_details, previous_hop, source_ip, destination_ip):
         """
         Creates a force node dictionary entry which will be appended to the force graph list.
         Example dictionary:
@@ -227,15 +227,11 @@ class ForceGraph(DataStore):
         :type destination_ip: str
         :return: None
         """
-        if not isinstance(hop_details, list):
-            hop_details = [hop_details]
-        if not isinstance(previous_hop, list):
-            previous_hop = [previous_hop]
-
         if len(hop_details) != len(previous_hop):
             print("Error: Hop information and previous hop list are of different length!")
             return
 
+        unique_tag = 'null tag:{index}_%s_%s' %(source_ip, destination_ip)
         for index, hop in enumerate(hop_details):
             node_point = ""
             if hop["ip"] == destination_ip:
@@ -243,7 +239,9 @@ class ForceGraph(DataStore):
             elif index == 0:
                 node_point = "source"
 
-            self.data_store.append({"source": previous_hop[index],
-                                    "target": hop["domain"],
+            source = unique_tag.format(index=index) if '*' in previous_hop[index] else previous_hop[index]
+            target = unique_tag.format(index=index+1) if '*' in hop["domain"] else hop["domain"]
+            self.data_store.append({"source": source,
+                                    "target": target,
                                     "type": hop["status"],
                                     "node_point": node_point})
