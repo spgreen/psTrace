@@ -62,10 +62,11 @@ class PsTrace:
 
             # Creates the hop list from the route_stats return
             route_from_source = [traceroute.information['source_domain']] + [hop["domain"] for hop in
-                                                                       traceroute.information['route_stats']][:-1]
+                                                                             traceroute.information['route_stats']][:-1]
             # Creates force nodes between previous and current hop
             self.force_graph.create_force_nodes(traceroute.information['route_stats'],
                                                 route_from_source,
+                                                traceroute.information['source_ip'],
                                                 traceroute.information['destination_ip'])
             # Compares current route with previous and stores current route in PREVIOUS_ROUTE_FP
             self.route_comparison.check_changes(traceroute.information)
