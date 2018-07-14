@@ -56,15 +56,15 @@
     {%- if historical_routes %}
         <h2>Historical Routes</h2>
         {%- for historical_route in historical_routes %}
-            <p>{{ historical_route.timestamp }}</p>
+            <p>{{ historical_route.date_time }}</p>
             <table border='1'>
             <tr><td>Hop</td><td>Domain</td><td>ASN</td><td>RTT (ms)</td></tr>
-            {%- for route_details in historical_route.layer3route_asn_rtt %}
+            {%- for route_details in historical_route.route_info %}
                 <tr>
                     <td>{{ loop.index }}</td>
-                    <td>{{ route_details[0] }}</td>
-                    <td>{{ route_details[1] }}</td>
-                    <td>{{ route_details[2] }}</td>
+                    <td>{{ route_details['domain'] }}</td>
+                    <td>{{ route_details['as'] }}</td>
+                    <td>{{ route_details['rtt'] }}</td>
                 <tr>
             {%- endfor %}
             </table>

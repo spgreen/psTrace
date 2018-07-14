@@ -30,14 +30,14 @@ class TracerouteAnalysis(Jinja2Template):
         Jinja2Template.__init__(self, jinja_template_file_path)
         self.different_route_index = set()
         self.trace_route_results = json_loader_saver.retrieve_json_from_url(traceroute_test_data['api'])
-        self.latest_trace_route = self.trace_route_results[-1]
-        end_date = self.datetime_from_timestamps(self.latest_trace_route["ts"])
+        latest_timestamp, route = self.trace_route_results[-1].values()
+        self.route_info = self.route_cleaner(route)
         self.information = {'source_ip': traceroute_test_data['source'],
                             'destination_ip': traceroute_test_data['destination'],
                             'source_domain': traceroute_test_data['source_domain'],
                             'destination_domain': traceroute_test_data['destination_domain'],
-                            'route_stats': [],
-                            'test_time': end_date}
+                            'route_stats': self.route_info,
+                            'test_time': self.datetime_from_timestamps(latest_timestamp)}
 
     @staticmethod
     def _tidy_route_slice(route):
@@ -59,43 +59,27 @@ class TracerouteAnalysis(Jinja2Template):
             return slice(-count)
         return
 
-    def _generate_hop_ip_and_domain_list(self, route_test):
+    def route_cleaner(self, route):
         """
-        Returns the IP address and domain address route from the traceroute test provided by route test
-        :param route_test: traceroute test
+
+        :param route:
         :return:
         """
-        domain_and_ip_addresses = []
-        for index, hop in enumerate(route_test["val"]):
-            if "hostname" in hop:
-                domain_and_ip_addresses.append((hop['hostname'], hop['ip']))
-            else:
-                hop_label = hop.get("ip", '*')
-                domain_and_ip_addresses.append((hop_label, hop_label))
-        slice_amount = self._tidy_route_slice(domain_and_ip_addresses)
+        remove_keys = ['ttl', 'query', 'success']
+        temp_route = []
+        for hop in route:
+            for key in remove_keys:
+                hop.pop(key)
+            hop['ip'] = hop.setdefault('ip', '*')
+            hop['hostname'] = hop.setdefault('hostname', hop.get('ip', '*'))
+            hop['domain'] = hop.pop('hostname')
+            hop['rtt'] = round(hop['rtt'], 2) if hop.get('rtt') else '*'
+            hop['as'] = hop.get('as', {}).get('number', '*')
+            temp_route.append(hop['ip'])
+        slice_amount = self._tidy_route_slice(temp_route)
         if slice_amount:
-            domain_and_ip_addresses = domain_and_ip_addresses[slice_amount]
-        domains, ip_addresses = list(zip(*domain_and_ip_addresses))
-        return {"domains": domains, "ip_addresses": ip_addresses}
-
-    @staticmethod
-    def _retrieve_asn(ps_hop_dictionary):
-        """
-        Retrieves Autonomous System Numbers from a PerfSONAR hop details dictionary.
-        ps_hop_dictionary example:
-                                    {'ip': '192.168.0.1',
-                                    'rtt': 0.1,
-                                    'success': 1,
-                                    'as': {'number': 00000, 'owner': 'LOCAL-AS'},
-                                    'query': 1,
-                                    'ttl': 1}
-        :param ps_hop_dictionary: Dictionary containing hop details
-        :return: as number
-        """
-        asn = "N/A"
-        if "as" in ps_hop_dictionary:
-            asn = ps_hop_dictionary["as"]["number"]
-        return asn
+            route = route[slice_amount]
+        return route
 
     @staticmethod
     def datetime_from_timestamps(*timestamps):
@@ -176,50 +160,29 @@ class TracerouteAnalysis(Jinja2Template):
                 continue
         return rtt
 
-    def _hop_information(self, hop_number, hop_ip_address):
-        """
-        Retrieves statistical information for the specified hop and returns
-        a dictionary of said statistics.
-        :param hop_number: hop index
-        :param hop_ip_address: hop index ip address
-        :return:
-        """
-        # Goes through every test comparing the IP occurring at the same hop_index of the latest trace route
-        rtt = self.retrieve_all_rtts_for_hop(hop_index=hop_number, hop_ip=hop_ip_address)
-
-        hop_details = self.five_number_summary(rtt)
-        hop_details["rtt"] = "unknown"
-        status = "unknown"
-
-        if rtt:
-            # Save last value of the rtt as it is from the latest trace route; save empty value if rtt does not exist
-            most_recent_rtt = round(rtt[-1], 2)
-            hop_details["rtt"] = most_recent_rtt
-            # rounds all hop_detail items to 2 d.p.s
-            hop_details = {key: round(float(value), 2) if value else most_recent_rtt
-                           for key, value in hop_details.items()}
-            status = "warn" if hop_details["rtt"] > hop_details["threshold"] else "okay"
-
-        hop_details["status"] = status
-        hop_details["ip"] = hop_ip_address
-        hop_details["as"] = self._retrieve_asn(self.latest_trace_route["val"][hop_number])
-        return hop_details
-
     def perform_traceroute_analysis(self):
         """
         Performs latest_route_analysis on the most recent traceroute against previous traceroute test
+        Retrieves statistical information for the specified hop and updates route_info with said statistics.
         :return: route statistics for the most recent traceroute
         """
-        # Retrieves latest route from self.trace_route_results
-        hop_ip_and_domain_list = self._generate_hop_ip_and_domain_list(self.latest_trace_route)
-        hop_ip_list = hop_ip_and_domain_list["ip_addresses"]
-        hop_domain_list = hop_ip_and_domain_list["domains"]
+        for (hop_index, hop_info) in enumerate(self.route_info):
+            rtt = self.retrieve_all_rtts_for_hop(hop_index=hop_index, hop_ip=hop_info.get('ip'))
 
-        for (hop_index, current_hop_ip) in enumerate(hop_ip_list):
-            hop_details = self._hop_information(hop_index, current_hop_ip)
-            hop_details["domain"] = hop_domain_list[hop_index]
-            self.information['route_stats'].append(hop_details)
-        return
+            hop_details = self.five_number_summary(rtt)
+            status = "unknown"
+
+            if rtt:
+                # Save last value of the rtt as it is from the latest trace route; save empty value if rtt does not exist
+                most_recent_rtt = round(rtt[-1], 2)
+                # rounds all hop_detail items to 2 d.p.s
+                hop_details = {key: round(float(value), 2) if value else most_recent_rtt
+                               for key, value in hop_details.items()}
+                status = "warn" if most_recent_rtt > hop_details["threshold"] else "okay"
+            hop_details['hop_number'] = hop_index + 1
+            hop_details["status"] = status
+            hop_info.update(hop_details)
+        return self.route_info
 
     def historical_diff_routes(self):
         """
@@ -239,18 +202,12 @@ class TracerouteAnalysis(Jinja2Template):
         # Retrieves all of the different routes that occurred during the data period and stores the routes within the
         # historical_routes list
         for i in sorted_diff_route_index:
-            route = self._generate_hop_ip_and_domain_list(self.trace_route_results[i])
-            asn = [self._retrieve_asn(hop) for hop in self.trace_route_results[i]["val"]]
-            rtt = [round(hop['rtt'], 2) if 'rtt' in hop else "N/A" for hop in self.trace_route_results[i]["val"]]
+            timestamp, traceroute_info = self.trace_route_results[i].values()
+            route = [hop.get('ip', '*') for hop in traceroute_info]
 
             if previous_route != route:
-                data = {'index': i,
-                        'timestamp': self.datetime_from_timestamps(self.trace_route_results[i]["ts"]),
-                        'layer3_route': route['domains'],
-                        'as_route': asn,
-                        'rtt': rtt,
-                        'layer3route_asn_rtt': zip(route['domains'], asn, rtt)}
-                historical_routes.append(data)
+                historical_routes.append({'date_time': self.datetime_from_timestamps(timestamp),
+                                          'route_info': self.route_cleaner(traceroute_info)})
             previous_route = route
         return historical_routes
 
@@ -278,3 +235,7 @@ class TracerouteAnalysis(Jinja2Template):
                                            end_date=self.information['test_time'],
                                            traceroute=self.information['route_stats'],
                                            historical_routes=historical_routes)
+
+    def __str__(self):
+        return "Traceroute({source}, {destination})".format(source=self.information['source_domain'],
+                                                            destination=self.information['destination_domain'])
