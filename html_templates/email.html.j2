@@ -15,10 +15,10 @@
     {%- for routes in changed_route.previous_and_current_route %}
     <tr>
         <td>{{ loop.index }}</td>
-        <td>{{ routes[0].domain }}</td>
+        <td>{{ routes[0].hostname }}</td>
         <td>{{ routes[0].as }}</td>
         <td>{{ routes[0].rtt }}</td>
-        <td>{{ routes[1].domain }}</td>
+        <td>{{ routes[1].hostname }}</td>
         <td>{{ routes[1].as }}</td>
         <td>{{ routes[1].rtt }}</td>
     </tr>

@@ -36,7 +36,7 @@
     {%- for hop in traceroute %}
     <tr>
         <td>{{ loop.index }}</td>
-        <td>{{ hop.domain }}</td>
+        <td>{{ hop.hostname }}</td>
         <td>{{ hop.ip }}</td>
         <td>{{ hop.as }}</td>
         <td>{{ hop.rtt }}</td>
@@ -62,9 +62,9 @@
             {%- for route_details in historical_route.route_info %}
                 <tr>
                     <td>{{ loop.index }}</td>
-                    <td>{{ route_details['domain'] }}</td>
-                    <td>{{ route_details['as'] }}</td>
-                    <td>{{ route_details['rtt'] }}</td>
+                    <td>{{ route_details.hostname }}</td>
+                    <td>{{ route_details.as }}</td>
+                    <td>{{ route_details.rtt }}</td>
                 <tr>
             {%- endfor %}
             </table>

@@ -65,18 +65,12 @@ class TracerouteAnalysis(Jinja2Template):
         :param route:
         :return:
         """
-        remove_keys = ['ttl', 'query', 'success']
-        temp_route = []
         for hop in route:
-            for key in remove_keys:
-                hop.pop(key)
-            hop['ip'] = hop.setdefault('ip', '*')
             hop['hostname'] = hop.setdefault('hostname', hop.get('ip', '*'))
-            hop['domain'] = hop.pop('hostname')
-            hop['rtt'] = round(hop['rtt'], 2) if hop.get('rtt') else '*'
+            hop['ip'] = hop.setdefault('ip', '*')
             hop['as'] = hop.get('as', {}).get('number', '*')
-            temp_route.append(hop['ip'])
-        slice_amount = self._tidy_route_slice(temp_route)
+            hop['rtt'] = round(hop['rtt'], 2) if hop.get('rtt') else '*'
+        slice_amount = self._tidy_route_slice(route)
         if slice_amount:
             route = route[slice_amount]
         return route
@@ -220,7 +214,7 @@ class TracerouteAnalysis(Jinja2Template):
                                                           end_date=self.information['test_time']))
         print("Hop:\tIP:\t\t\tAS:   RTT: Min: Median: Threshold: Notice:\tDomain:\n")
         for (index, hop) in enumerate(self.information['route_stats']):
-            print("{:4} {ip:24} {as:5} {rtt:6} {status:7} {domain}".format(index + 1, **hop))
+            print("{:4} {ip:24} {as:5} {rtt:6} {status:7} {hostname}".format(index + 1, **hop))
 
     def create_traceroute_web_page(self, historical_routes):
         """
