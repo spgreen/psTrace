@@ -240,7 +240,7 @@ class ForceGraph(DataStore):
                 node_point = "source"
 
             source = unique_tag.format(index=index) if '*' in previous_hop[index] else previous_hop[index]
-            target = hop.get('hostname', unique_tag.format(index=index+1))
+            target = unique_tag.format(index=index+1) if '*' in hop['hostname'] else hop['hostname']
             self.data_store.append({"source": source,
                                     "target": target,
                                     "type": hop["status"],
