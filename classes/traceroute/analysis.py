@@ -30,14 +30,14 @@ class TracerouteAnalysis(Jinja2Template):
         Jinja2Template.__init__(self, jinja_template_file_path)
         self.different_route_index = set()
         self.trace_route_results = json_loader_saver.retrieve_json_from_url(traceroute_test_data['api'])
-        latest_timestamp, route = self.trace_route_results[-1].values()
-        self.route_info = self.route_cleaner(route)
+        latest_trace_route = self.trace_route_results[-1]
+        self.route_info = self.route_cleaner(latest_trace_route['val'])
         self.information = {'source_ip': traceroute_test_data['source'],
                             'destination_ip': traceroute_test_data['destination'],
                             'source_domain': traceroute_test_data['source_domain'],
                             'destination_domain': traceroute_test_data['destination_domain'],
                             'route_stats': self.route_info,
-                            'test_time': self.datetime_from_timestamps(latest_timestamp)}
+                            'test_time': self.datetime_from_timestamps(latest_trace_route['ts'])}
 
     @staticmethod
     def _tidy_route_slice(route):
@@ -196,12 +196,12 @@ class TracerouteAnalysis(Jinja2Template):
         # Retrieves all of the different routes that occurred during the data period and stores the routes within the
         # historical_routes list
         for i in sorted_diff_route_index:
-            timestamp, traceroute_info = self.trace_route_results[i].values()
-            route = [hop.get('ip', '*') for hop in traceroute_info]
+            changed_traceroute = self.trace_route_results[i]
+            route = [hop.get('ip', '*') for hop in changed_traceroute['val']]
 
             if previous_route != route:
-                historical_routes.append({'date_time': self.datetime_from_timestamps(timestamp),
-                                          'route_info': self.route_cleaner(traceroute_info)})
+                historical_routes.append({'date_time': self.datetime_from_timestamps(changed_traceroute['ts']),
+                                          'route_info': self.route_cleaner(changed_traceroute['val'])})
             previous_route = route
         return historical_routes
 
