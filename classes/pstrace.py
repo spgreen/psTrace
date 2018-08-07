@@ -54,14 +54,14 @@ class PsTrace:
             with open(os.path.join(html_save_directory, fp_html), "w") as html_file:
                 html_file.write(traceroute.create_traceroute_web_page(historical_routes))
 
-            traceroute_rtt = traceroute.information['route_stats'][-1]["rtt"]
+            traceroute_rtt = traceroute.information['route_stats'][-1].get("rtt", 'unknown')
             self.matrix.update_matrix(source=source_ip,
                                       destination=destination_ip,
                                       rtt=traceroute_rtt,
                                       fp_html=fp_html)
 
             # Creates the hop list from the route_stats return
-            route_from_source = [traceroute.information['source_domain']] + [hop["domain"] for hop in
+            route_from_source = [traceroute.information['source_domain']] + [hop["hostname"] for hop in
                                                                              traceroute.information['route_stats']][:-1]
             # Creates force nodes between previous and current hop
             self.force_graph.create_force_nodes(traceroute.information['route_stats'],
