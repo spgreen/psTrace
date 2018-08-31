@@ -232,13 +232,13 @@ class ForceGraph(DataStore):
         unique_tag = 'null tag:{index}_%s_%s' %(source_ip, destination_ip)
         for index, hop in enumerate(hop_details):
             node_point = ""
-            if hop["ip"] == destination_ip:
+            if hop.get("ip") == destination_ip:
                 node_point = "destination"
             elif index == 0:
                 node_point = "source"
 
             source = unique_tag.format(index=index) if '*' in previous_hop[index] else previous_hop[index]
-            target = unique_tag.format(index=index+1) if '*' in hop["domain"] else hop["domain"]
+            target = unique_tag.format(index=index+1) if '*' in hop['hostname'] else hop['hostname']
             self.data_store.append({"source": source,
                                     "target": target,
                                     "type": hop["status"],
