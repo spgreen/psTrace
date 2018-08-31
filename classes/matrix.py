@@ -63,14 +63,12 @@ class Matrix(Jinja2Template):
         :return: sorted matrix dictionary
         """
         # Retrieves all endpoint ip addresses from the the PerfSONAR MA metadata
-        source_ip_addresses = list({route_test['source'] for route_test in test_metadata})
-        test_endpoints = list({route_test['destination'] for route_test in test_metadata})
-        test_endpoints.extend(source_ip_addresses)
-        self.endpoints = list(set(test_endpoints))
-        self.endpoints.sort()
+        endpoints = list(map(set, zip(*[(test['source'], test['destination']) for test in test_metadata])))
+        source_ip_addresses = endpoints[0]
+        self.endpoints = sorted(list(endpoints[1].union(endpoints[0])))
 
         # Creates the destination information dict for all matrix sources to all destinations.
-        matrix = {src: {dst: {"rtt": "", "fp_html": ""} for dst in self.endpoints} for src in source_ip_addresses}
+        matrix = {src: {dst: {'rtt': '', 'fp_html': ''} for dst in self.endpoints} for src in source_ip_addresses}
         return collections.OrderedDict(sorted(matrix.items(), key=lambda i: i[0]))
 
     def update_matrix(self, source, destination, rtt, fp_html):
