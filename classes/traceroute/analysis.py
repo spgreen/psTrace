@@ -47,12 +47,12 @@ class TracerouteAnalysis(Jinja2Template):
         :param route: traceroute route
         :return: None or slice to be performed on route
         """
-        if '*' not in route[-1]:
+        if '*' not in route[-1].values():
             return
         route_reversed = reversed(route)
         count = -1
         for hop in route_reversed:
-            if '*' not in hop:
+            if '*' not in hop.values():
                 break
             count += 1
         if count > 0:
@@ -67,9 +67,17 @@ class TracerouteAnalysis(Jinja2Template):
         """
         for hop in route:
             hop['hostname'] = hop.setdefault('hostname', hop.get('ip', '*'))
+            if hop.get('hostname') == 'gateway':
+                hop['hostname'] = hop.get('ip', '*')
             hop['ip'] = hop.setdefault('ip', '*')
-            hop['as'] = hop.get('as', {}).get('number', '*')
-            hop['rtt'] = round(hop['rtt'], 2) if hop.get('rtt') else '*'
+            try:
+                hop['as'] = hop.get('as', {}).get('number', '*')
+            except AttributeError:
+                hop['as'] = hop.get('as', '*')
+            try:
+                hop['rtt'] = round(hop['rtt'], 2)
+            except (TypeError, KeyError):
+                hop['rtt'] = hop.get('rtt', '*')
         slice_amount = self._tidy_route_slice(route)
         if slice_amount:
             route = route[slice_amount]
@@ -149,7 +157,7 @@ class TracerouteAnalysis(Jinja2Template):
                     rtt_append(float(traceroute_test["val"][hop_index]["rtt"]))
                 else:
                     different_route_add(test_index)
-            except (KeyError, IndexError):
+            except (KeyError, IndexError, ValueError):
                 different_route_add(test_index)
                 continue
         return rtt
