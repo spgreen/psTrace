@@ -104,7 +104,7 @@ def create_matrix_html(source_list, destination_list, matrix, rdns_query):
         ip_version = ipaddress.ip_address(ip).version
         return " ".join([domain, '(IPv6)']) if ip_version is 6 else domain
 
-    html = ['<table><tr><td>S/D</td>']
+    html = ['<tr><td>S/D</td>']
     for destination in destination_list:
         label = ipv6_label(destination, rdns_query(destination))
         html.append('<td><div><span>{}</span></div></td>'.format(label))
@@ -118,7 +118,6 @@ def create_matrix_html(source_list, destination_list, matrix, rdns_query):
             except KeyError:
                 html.append('<td></td>')
         html.append('</tr>')
-    html.append('</table>')
     return ''.join(html)
 
 
@@ -179,9 +178,9 @@ def main(perfsonar_ma_url, time_period):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("time_period", help="Time period (in seconds) from current point in time. "
-                                            "e.g. 1 day == 86400", type=int)
-    parser.add_argument('--perfsonar_urls', '-u', nargs='+', help="IP or base domain of the PerfSONAR MA")
+    parser.add_argument('--time_period', '-t', help='Time period (in seconds) from current point in time. '
+                                                    'e.g. 1 day == 86400', type=int)
+    parser.add_argument('--perfsonar_urls', '-u', nargs='+', help='IP or base domain of the PerfSONAR MA')
 
     args = parser.parse_args()
     if args.time_period < TESTING_PERIOD:
