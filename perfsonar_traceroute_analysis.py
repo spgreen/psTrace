@@ -69,8 +69,11 @@ def acquire_traceroute_tests(ps_node_urls, rdns_query, test_time_range=2400):
 
     traceroute_tests = []
     for url in ps_node_urls:
-        ps_url = "https://%s/esmond/perfsonar/archive/?event-type=packet-trace&time-range=%d&" % (url, TESTING_PERIOD)
-        traceroute_tests.extend(json_loader_saver.retrieve_json_from_url(ps_url))
+        ps_url = "https://%s/esmond/perfsonar/archive/?event-type=packet-trace&time-range=%d" % (url, TESTING_PERIOD)
+        try:
+            traceroute_tests.extend(json_loader_saver.retrieve_json_from_url(ps_url))
+        except HTTPError as error:
+            print("%s - Unable to retrieve perfSONAR traceroute data from %s. Continuing..." % (error, url))
 
     for singular_test in traceroute_tests:
         url = urllib.parse.urlsplit(singular_test['url'], scheme="https")
@@ -133,15 +136,11 @@ def main(perfsonar_ma_url, time_period):
     rdns.update_from_json_file(REVERSE_DNS_FP)
     rdns_query = rdns.query
 
-    print("Acquiring traceroute tests... ", end="")
+    print("Acquiring traceroute tests... ")
 
-    try:
-        traceroute_metadata = acquire_traceroute_tests(ps_node_urls=perfsonar_ma_url,
-                                                       rdns_query=rdns_query,
-                                                       test_time_range=time_period)
-    except HTTPError as error:
-        print("%s - Unable to retrieve perfSONAR traceroute data from %s" % (error, perfsonar_ma_url))
-        exit()
+    traceroute_metadata = acquire_traceroute_tests(ps_node_urls=perfsonar_ma_url,
+                                                   rdns_query=rdns_query,
+                                                   test_time_range=time_period)
 
     ps_trace = PsTrace(PREVIOUS_ROUTE_FP, THRESHOLD, J2_EMAIL_TEMPLATE_FP)
     ps_analysis = ps_trace.analysis
@@ -156,6 +155,10 @@ def main(perfsonar_ma_url, time_period):
         matrix.setdefault(results[0], {}).setdefault(results[1], results[2])
     destination = sorted(list(destination))
     source = sorted(list(source))
+
+    if not matrix:
+        print('No valid PerfSONAR Traceroute Measurement Archive(s)! Exiting...')
+        exit()
 
     if EMAIL_ALERTS and ps_trace.route_comparison.changed_routes:
         ps_trace.route_comparison.send_email_alert(EMAIL_TO, EMAIL_FROM, EMAIL_SUBJECT, SMTP_SERVER)
