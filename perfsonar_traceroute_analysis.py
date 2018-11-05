@@ -1,28 +1,41 @@
 #!/usr/bin/python3
+"""
+TODO: Add Description
+"""
+
 import argparse
 import datetime
 import os.path
-import sys
+import ipaddress
 import configparser
 import urllib.parse
-
 from urllib.error import HTTPError
-
-import classes.PsTrace
+from classes.rdns import ReverseDNS
+from classes.pstrace import PsTrace
+from classes.base import Jinja2Template
 from lib import json_loader_saver
+
+__author__ = "Simon Peter Green"
+__copyright__ = "Copyright (c) 2017 spgreen"
+__credits__ = []
+__license__ = "MIT"
+__version__ = "0.5"
+__maintainer__ = "Simon Peter Green"
+__email__ = "simonpetergreen@singaren.net.sg"
+__status__ = "Development"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-config = configparser.ConfigParser()
-config.read(os.path.join(BASE_DIR, 'config.ini'))
+CONFIG = configparser.ConfigParser()
+CONFIG.read(os.path.join(BASE_DIR, 'config.ini'))
 
-TESTING_PERIOD = int(config['PERFSONAR']['MAX_TIME_BETWEEN_TESTS'])
-THRESHOLD = float(config['ROUTE_COMPARISON']['THRESHOLD'])
-EMAIL_ALERTS = int(config['EMAIL']['ALERTS'])
-EMAIL_TO = config['EMAIL']['TO'].replace(' ', '').split(',')
-EMAIL_FROM = config['EMAIL']['FROM']
-EMAIL_SUBJECT = config['EMAIL']['SUBJECT']
-SMTP_SERVER = config['EMAIL']['SMTP_SERVER']
+TESTING_PERIOD = int(CONFIG['PERFSONAR']['MAX_TIME_BETWEEN_TESTS'])
+THRESHOLD = float(CONFIG['ROUTE_COMPARISON']['THRESHOLD'])
+EMAIL_ALERTS = int(CONFIG['EMAIL']['ALERTS'])
+EMAIL_TO = CONFIG['EMAIL']['TO'].replace(' ', '').split(',')
+EMAIL_FROM = CONFIG['EMAIL']['FROM']
+EMAIL_SUBJECT = CONFIG['EMAIL']['SUBJECT']
+SMTP_SERVER = CONFIG['EMAIL']['SMTP_SERVER']
 
 # Directories
 HTML_DIR = os.path.join(BASE_DIR, "html")
@@ -43,138 +56,138 @@ J2_TRACEROUTE_WEB_PAGE_FP = os.path.join(TEMPLATE_DIR, "traceroute.html.j2")
 J2_MATRIX_WEB_PAGE_FP = os.path.join(TEMPLATE_DIR, "matrix.html.j2")
 
 
-def acquire_traceroute_tests(ps_node_url, test_time_range=2400):
+def acquire_traceroute_tests(ps_node_urls, rdns_query, test_time_range=2400):
     """
     Acquires all recent traceroute results from a PerfSONAR Measurement Archive
-    :param ps_node_url: either URL such without http(s):// or IP address. e.g. ps_ma.net.zz or 192.168.0.1
-    :param test_time_range: time in seconds
+    :param ps_node_urls: Base URL of PerfSONAR MA
+    :param test_time_range: time range in seconds of tests to retrieve
+    :param rdns_query: Reverse DNS function
     :return: 
     """
     if not isinstance(test_time_range, int):
         raise ValueError
 
-    ps_url = "https://%s/esmond/perfsonar/archive/?event-type=packet-trace&time-range=%d" % (ps_node_url, TESTING_PERIOD)
-    traceroute_tests = json_loader_saver.retrieve_json_from_url(ps_url)
+    traceroute_tests = []
+    for url in ps_node_urls:
+        ps_url = "https://%s/esmond/perfsonar/archive/?event-type=packet-trace&time-range=%d" % (url, TESTING_PERIOD)
+        try:
+            traceroute_tests.extend(json_loader_saver.retrieve_json_from_url(ps_url))
+        except HTTPError as error:
+            print("%s - Unable to retrieve perfSONAR traceroute data from %s. Continuing..." % (error, url))
 
-    data_list = []
     for singular_test in traceroute_tests:
-            url = urllib.parse.urlsplit(singular_test['url'], scheme="https")
-            api_key = "https://{}{}packet-trace/base?time-range={}".format(
-                url.netloc, url.path, test_time_range)
-            data_list.append({'api': api_key,
-                              'source': singular_test['source'],
-                              'destination': singular_test["destination"]})
+        url = urllib.parse.urlsplit(singular_test['url'], scheme="https")
+        api_key = "https://{}{}packet-trace/base?time-range={}".format(url.netloc, url.path, test_time_range)
 
-    return data_list
+        yield {'api': api_key,
+               'source': singular_test['source'],
+               'destination': singular_test["destination"],
+               'source_domain': rdns_query(singular_test['source']),
+               'destination_domain': rdns_query(singular_test["destination"])}
 
 
-def latest_route_analysis(traceroute_test_data, traceroute_matrix):
+def create_matrix_html(source_list, destination_list, matrix, rdns_query):
     """
-    Performs the current and historical analysis 
-    :param traceroute_test_data: traceroute results
-    :param traceroute_matrix:
-    :return: 
+    Creates the html code for the matrix table by using the source and destination entries
+    to retrieve each item from the matrix dictionary.
+    :param source_list: Traceroute test source IPs
+    :param destination_list: Traceroute test destination IPs
+    :param matrix: Dictionary containing basic traceroute test information (i.e. html file path and RTT)
+    :param rdns_query: function that performs a Reverse DNS query
+    :return:
     """
-    traceroute = classes.PsTrace.Traceroute(traceroute_test_data, J2_TRACEROUTE_WEB_PAGE_FP)
+    def ipv6_label(ip, domain):
+        """
+        Returns a domain name with IPv6 tagged to the end if the IP address is IPv6 otherwise it
+        returns just the domain name.
+        :param ip: IP Address
+        :param domain: Domain name address
+        :return: str
+        """
+        ip_version = ipaddress.ip_address(ip).version
+        return " ".join([domain, '(IPv6)']) if ip_version is 6 else domain
 
-    source_ip = traceroute.source_ip
-    destination_ip = traceroute.destination_ip
-
-    traceroute.perform_traceroute_analysis()
-    traceroute.latest_trace_output()
-    historical_routes = traceroute.historical_diff_routes()
-
-    fp_html = "{source}-to-{dest}.html".format(source=source_ip, dest=destination_ip)
-    # Replaces the colons(:) for IPv6 addresses with full-stops(.)
-    # to prevent file path issues when saving on Win32
-    if sys.platform == "win32":
-        fp_html = fp_html.replace(":", ".")
-    with open(os.path.join(HTML_DIR, fp_html), "w") as html_file:
-        html_file.write(traceroute.create_traceroute_web_page(historical_routes))
-
-    traceroute_rtt = traceroute.route_stats[-1]["rtt"]
-    traceroute_matrix.update_matrix(source=source_ip, destination=destination_ip, rtt=traceroute_rtt, fp_html=fp_html)
-
-    return traceroute.end_date, traceroute.route_stats
+    html = ['<tr><td>S/D</td>']
+    for destination in destination_list:
+        label = ipv6_label(destination, rdns_query(destination))
+        html.append('<td><div><span>{}</span></div></td>'.format(label))
+    html.append('</tr>')
+    for source in source_list:
+        label = ipv6_label(source, rdns_query(source))
+        html.append('<tr><td>{}</td>'.format(label))
+        for destination in destination_list:
+            try:
+                html.append('<td><a href="{fp_html}">{rtt}</a></td>'.format(**matrix[source][destination]))
+            except KeyError:
+                html.append('<td></td>')
+        html.append('</tr>')
+    return ''.join(html)
 
 
 def main(perfsonar_ma_url, time_period):
-    traceroute_metadata = ''
-    # Force Graph initialisation
-    force_graph = classes.PsTrace.ForceGraph()
-
-    rdns = classes.PsTrace.ReverseDNS()
+    """
+    TODO: Add Description
+    :param perfsonar_ma_url:
+    :param time_period:
+    :return:
+    """
+    rdns = ReverseDNS()
     # Loads reverse DNS information from a JSON file found at REVERSE_DNS_FP
     rdns.update_from_json_file(REVERSE_DNS_FP)
     rdns_query = rdns.query
 
-    route_comparison = classes.PsTrace.RouteComparison(THRESHOLD, J2_EMAIL_TEMPLATE_FP)
-    # Loads previous route information from a JSON file found at PREVIOUS_ROUTE_FP
-    route_comparison.update_from_json_file(PREVIOUS_ROUTE_FP)
-    route_compare = route_comparison.compare_and_update
+    print("Acquiring traceroute tests... ")
 
-    print("Acquiring traceroute tests... ", end="")
+    traceroute_metadata = acquire_traceroute_tests(ps_node_urls=perfsonar_ma_url,
+                                                   rdns_query=rdns_query,
+                                                   test_time_range=time_period)
 
-    try:
-        traceroute_metadata = acquire_traceroute_tests(perfsonar_ma_url, test_time_range=time_period)
-        print("%d test(s) received!" % len(traceroute_metadata))
-    except HTTPError as e:
-        print("%s - Unable to retrieve perfSONAR traceroute data from %s" % (e, perfsonar_ma_url))
+    ps_trace = PsTrace(PREVIOUS_ROUTE_FP, THRESHOLD, J2_EMAIL_TEMPLATE_FP)
+    ps_analysis = ps_trace.analysis
+
+    source = set()
+    destination = set()
+    matrix = {}
+    for traceroute_test in traceroute_metadata:
+        results = ps_analysis(traceroute_test, HTML_DIR, J2_TRACEROUTE_WEB_PAGE_FP)
+        source.add(results[0])
+        destination.add(results[1])
+        matrix.setdefault(results[0], {}).setdefault(results[1], results[2])
+    destination = sorted(list(destination))
+    source = sorted(list(source))
+
+    if not matrix:
+        print('No valid PerfSONAR Traceroute Measurement Archive(s)! Exiting...')
         exit()
 
-    print("Creating Matrix.... ", end="")
-    traceroute_matrix = classes.PsTrace.Matrix(traceroute_metadata, J2_MATRIX_WEB_PAGE_FP)
-    print("Matrix Created")
-
-    # Computes the trace route data for all tests found within the perfSONAR MA
-    for traceroute in traceroute_metadata:
-        source, destination = traceroute.get("source"), traceroute.get("destination")
-        source_domain, destination_domain = rdns_query(source, destination)
-        try:
-            timestamp, route_stats = latest_route_analysis(traceroute, traceroute_matrix)
-
-        except HTTPError as e:
-            print(e, "unable to retrieve traceroute data from %s" % traceroute.get("api"))
-            print("Retrieving next test....")
-            traceroute_matrix.update_matrix(source=source,
-                                            destination=destination,
-                                            rtt=False,
-                                            fp_html=False)
-            continue
-        # Creates the hop list from the route_stats return
-        route_from_source = [source_domain] + [hop["domain"] for hop in route_stats][:-1]
-        # Creates force nodes between previous and current hop
-        force_graph.create_force_nodes(route_stats, route_from_source, destination)
-        # Compares current route with previous and stores current route in PREVIOUS_ROUTE_FP
-        route_compare(src_ip=source, src_domain=source_domain,
-                      dest_ip=destination, dest_domain=destination_domain,
-                      route_stats=route_stats, timestamp=timestamp)
-
-    if EMAIL_ALERTS and route_comparison.email_contents:
-        route_comparison.send_email_alert(EMAIL_TO, EMAIL_FROM, EMAIL_SUBJECT, SMTP_SERVER)
+    if EMAIL_ALERTS and ps_trace.route_comparison.changed_routes:
+        ps_trace.route_comparison.send_email_alert(EMAIL_TO, EMAIL_FROM, EMAIL_SUBJECT, SMTP_SERVER)
 
     with open(DASHBOARD_WEB_PAGE_FP, "w") as web_matrix_file:
         current_time = datetime.datetime.now().strftime("%c")
-        web_matrix = traceroute_matrix.create_matrix_web_page(current_time, rdns_query)
-        web_matrix_file.write(web_matrix)
+        matrix_page = Jinja2Template(J2_MATRIX_WEB_PAGE_FP)
+        html_matrix_table = create_matrix_html(source, destination, matrix, rdns_query)
+        web_matrix_file.write(matrix_page.render_template_output(matrix=html_matrix_table, end_date=current_time))
 
     # Dictionary + file path for data_store, rdns and route_comparison
-    data_to_save = ((force_graph, FORCE_GRAPH_DATA_FP),
-                     (rdns, REVERSE_DNS_FP),
-                     (route_comparison, PREVIOUS_ROUTE_FP))
+    data_to_save = ((ps_trace.force_graph, FORCE_GRAPH_DATA_FP),
+                    (rdns, REVERSE_DNS_FP),
+                    (ps_trace.route_comparison, PREVIOUS_ROUTE_FP))
 
     for objects, file_path in data_to_save:
         objects.save_as_json_file(file_path)
+    print("Done")
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("perfsonar_base", help="IP or base domain of the PerfSONAR MA")
-    parser.add_argument("time_period", help="Time period (in seconds) from current point in time. "
-                                            "e.g. 1 day == 86400", type=int)
+    parser.add_argument('--time_period', '-t', help='Time period (in seconds) from current point in time. '
+                                                    'e.g. 1 day == 86400', type=int)
+    parser.add_argument('--perfsonar_urls', '-u', nargs='+', help='IP or base domain of the PerfSONAR MA')
+
     args = parser.parse_args()
     if args.time_period < TESTING_PERIOD:
         print("ERROR: Time period (%d seconds) is less than the traceroute testing period (%d seconds)."
               "\nExiting..." % (args.time_period, TESTING_PERIOD))
         exit()
-    main(args.perfsonar_base, args.time_period)
+    main(args.perfsonar_urls, args.time_period)
