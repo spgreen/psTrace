@@ -47,7 +47,8 @@ class TracerouteAnalysis(Jinja2Template):
         :param route: traceroute route
         :return: None or slice to be performed on route
         """
-        if '*' not in route[-1].values():
+
+        if '*' not in str(route[-1]['rtt']):
             return
         route_reversed = reversed(route)
         count = -1
